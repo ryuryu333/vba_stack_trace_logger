@@ -3,6 +3,7 @@ logs
 /xvba_excel_backup
 
 *.xlsm
+*.xlam
 
 # 関係ないコードファイルを除外
 vba-files/Class/ClassHoge.cls
