@@ -1,4 +1,6 @@
 Attribute VB_Name = "Logger_DataStruct"
+' Logger_DataStruct.bas
+
 Public Type LoggerConfigStruct
     IsIncludeCallerInfo As Boolean
     IsWriteToImmediate As Boolean
