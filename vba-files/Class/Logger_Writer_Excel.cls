@@ -25,19 +25,17 @@ Private Sub Logger_ILogWriter_Initialize()
         Exit Sub
     End If
 
-    ' ヘッダー行を出力（1行目）
     With pOutputSheet
         .Cells(1, 1).value = "Timestamp"
         .Cells(1, 2).value = "Tag"
-        .Cells(1, 3).value = "Module"
-        .Cells(1, 4).value = "Procedure"
-        .Cells(1, 5).value = "Message"
+        .Cells(1, 3).value = "呼び出し元情報" ' Changed from Module
+        .Cells(1, 4).value = "Message"       ' Changed from Procedure (and effectively was Message)
     End With
     
-    With pOutputSheet.Range("A1:E1")
-    .HorizontalAlignment = xlCenter
-    .VerticalAlignment = xlCenter
-    .Font.Bold = True
+    With pOutputSheet.Range("A1:D1") ' Adjusted range to D1
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .Font.Bold = True
     End With
 
     pCurrentRow = 2  ' ログ出力開始行
@@ -54,20 +52,24 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         .Cells(pCurrentRow, 2).value = logInfo.TagName
 
         If logInfo.IsIncludeCallerInfo Then
-            .Cells(pCurrentRow, 3).value = logInfo.ModuleName
-            .Cells(pCurrentRow, 4).value = logInfo.ProcedureName
+            If Len(logInfo.CallPath) > 0 Then
+                .Cells(pCurrentRow, 3).value = logInfo.CallPath
+            ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then
+                .Cells(pCurrentRow, 3).value = logInfo.ModuleName & "." & logInfo.ProcedureName
+            Else
+                .Cells(pCurrentRow, 3).value = "" ' No specific caller info
+            End If
         Else
-            .Cells(pCurrentRow, 3).value = ""
-            .Cells(pCurrentRow, 4).value = ""
+            .Cells(pCurrentRow, 3).value = "" ' Caller info not requested
         End If
 
-        .Cells(pCurrentRow, 5).value = logInfo.Message
+        .Cells(pCurrentRow, 4).value = logInfo.Message ' Message now in column D
         
-        .Range(.Cells(pCurrentRow, 1), .Cells(pCurrentRow, 5)).VerticalAlignment = xlCenter
+        .Range(.Cells(pCurrentRow, 1), .Cells(pCurrentRow, 4)).VerticalAlignment = xlCenter ' Adjusted range to column D
         
-        ' 最初の出力（2行目）のときだけ列幅を AutoFit、毎回処理するのは重そうなので、最初の1回だけ実施
+        ' 最初の出力（2行目）のときだけ列幅を AutoFit
         If pCurrentRow = 2 Then
-            .Columns("A:E").AutoFit
+            .Columns("A:D").AutoFit ' Adjusted range to column D
         End If
         
         ' 背景色の適用
@@ -82,15 +84,19 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         End Select
     
         If bgColor <> xlNone Then
-            .Range(.Cells(pCurrentRow, 1), .Cells(pCurrentRow, 5)).Interior.Color = bgColor
+            .Range(.Cells(pCurrentRow, 1), .Cells(pCurrentRow, 4)).Interior.Color = bgColor ' Adjusted range to column D
         End If
             
-        End With
+    End With
     
     pCurrentRow = pCurrentRow + 1
 End Sub
 
 Private Sub Logger_ILogWriter_Terminate()
-    pOutputSheet.Columns("A:E").AutoFit
+    If Not pOutputSheet Is Nothing Then
+        On Error Resume Next ' Handle cases where sheet might not be available
+        pOutputSheet.Columns("A:D").AutoFit ' Adjusted range to column D
+        On Error GoTo 0
+    End If
 End Sub
 

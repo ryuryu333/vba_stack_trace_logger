@@ -16,16 +16,25 @@ Private Sub Logger_ILogWriter_Initialize()
 End Sub
 
 Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
+    Dim outputContext As String
+    
     If logInfo.IsIncludeCallerInfo Then
-        Debug.Print "[" & logInfo.Timestamp & "]" & _
-                    "[" & logInfo.TagName & "]" & _
-                    "[" & logInfo.ModuleName & "." & logInfo.ProcedureName & "] " & _
-                    logInfo.Message
+        If Len(logInfo.CallPath) > 0 Then
+            outputContext = "[" & logInfo.CallPath & "]"
+        ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then
+            ' Fallback for direct Log calls if CallPath is empty but caller info is requested
+            outputContext = "[" & logInfo.ModuleName & "." & logInfo.ProcedureName & "]"
+        Else
+            outputContext = ""
+        End If
     Else
-        Debug.Print "[" & logInfo.Timestamp & "]" & _
-                    "[" & logInfo.TagName & "]" & _
-                    logInfo.Message
+        outputContext = ""
     End If
+
+    Debug.Print "[" & logInfo.Timestamp & "]" & _
+                "[" & logInfo.TagName & "]" & _
+                IIf(Len(outputContext) > 0, " " & outputContext, "") & _
+                IIf(Len(logInfo.Message) > 0, " " & logInfo.Message, "")
 End Sub
 
 Private Sub Logger_ILogWriter_Terminate()
