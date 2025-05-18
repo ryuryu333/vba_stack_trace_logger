@@ -24,4 +24,5 @@ Public Enum LoggerLogTag
     LogTag_Warning = 2
     LogTag_Error = 3
     LogTag_Critical = 4
+    LogTag_Trace = 5
 End Enum

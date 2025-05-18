@@ -96,6 +96,7 @@ Private Function GetTagName(tagEnum As LoggerLogTag) As String
         Case LogTag_Warning:  GetTagName = "WARNING"
         Case LogTag_Error:    GetTagName = "ERROR"
         Case LogTag_Critical: GetTagName = "CRITICAL"
+        Case LogTag_Trace:    GetTagName = "Trace"
         Case Else:            GetTagName = "INFO"
     End Select
 End Function
