@@ -16,6 +16,7 @@ Private logInfo As LoggerLogInfoStruct
 Private pIsIncludeCallerInfo As Boolean
 Private pModuleName As String
 Private pProcedureName As String
+Private pCurrentCallPath As String
 
 Public Sub SetModuleName(ModuleName As String)
     pModuleName = ModuleName
@@ -73,12 +74,36 @@ Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
     logInfo.ProcedureName = pProcedureName
     pMetadataProvider.AttachMetadata logInfo
     logInfo.IsIncludeCallerInfo = pIsIncludeCallerInfo
+    If pIsIncludeCallerInfo Then
+        logInfo.CallPath = pCurrentCallPath
+    Else
+        logInfo.CallPath = ""
+    End If
     
     ' ログ出力命令
     Dim writer As Logger_ILogWriter
     For Each writer In pWriters
         writer.WriteLog logInfo
     Next
+End Sub
+
+' 新しい関数が呼び出された際の処理
+Public Function EnterProcedureContext(ByVal ModuleName As String, ByVal ProcName As String) As String
+    Dim newPathSegment As String
+    newPathSegment = ModuleName & "." & ProcName
+
+    ' 新しい関数を呼ばれた時点でのスタックトレース情報を返した後、情報を更新する
+    EnterProcedureContext = pCurrentCallPath
+
+    If Len(pCurrentCallPath) > 0 Then
+        pCurrentCallPath = newPathSegment & " < " & pCurrentCallPath
+    Else
+        pCurrentCallPath = newPathSegment
+    End If
+End Function
+
+Public Sub ExitProcedureContext(ByVal previousPath As String)
+    pCurrentCallPath = previousPath
 End Sub
 
 ' 各Writerの終了処理

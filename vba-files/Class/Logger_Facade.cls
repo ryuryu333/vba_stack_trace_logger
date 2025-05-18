@@ -37,6 +37,22 @@ Public Sub Log(Message As String, Optional Tag As LoggerLogTag = LogTag_Info)
     pController.WriteLog logInfo
 End Sub
 
+Public Function EnterProcedureContext(ByVal ModuleName As String, ByVal ProcName As String) As String
+    If Not pIsInitialized Or pController Is Nothing Then
+        Err.Raise vbObjectError + 513, "Logger_Facade.EnterProcedureContext", "ロガーが初期化されていません。"
+        Exit Function ' Should not happen if initialized
+    End If
+    EnterProcedureContext = pController.EnterProcedureContext(ModuleName, ProcName)
+End Function
+
+Public Sub ExitProcedureContext(ByVal previousPath As String)
+    If Not pIsInitialized Or pController Is Nothing Then
+        Err.Raise vbObjectError + 513, "Logger_Facade.ExitProcedureContext", "ロガーが初期化されていません。"
+        Exit Sub ' Should not happen if initialized
+    End If
+    pController.ExitProcedureContext previousPath
+End Sub
+
 Public Sub SetCallerInfo(ModuleName As String, ProcedureName As String)
     If Not pIsInitialized Then
         Err.Raise vbObjectError, "Logger_Facade.Initialize が実行されていません、先に初期化してください"

@@ -12,6 +12,7 @@ Option Explicit
 
 Private mModuleName As String
 Private mProcedureName As String
+Private pPreviousCallPath As String
 Private pLogger As Logger_Facade
 
 Friend Sub Init(ByVal ModuleName As String, _
@@ -21,6 +22,7 @@ Friend Sub Init(ByVal ModuleName As String, _
 
     Set pLogger = MyLogger
     If Not pLogger Is Nothing Then
+        pPreviousCallPath = pLogger.EnterProcedureContext(mModuleName, mProcedureName)
         pLogger.SetCallerInfo mModuleName, mProcedureName
         pLogger.Log ">> Enter " & mProcedureName, LogTag_Trace
     End If
@@ -30,7 +32,8 @@ Private Sub Class_Terminate()
     On Error Resume Next
     If Not pLogger Is Nothing Then
         pLogger.SetCallerInfo mModuleName, mProcedureName
-        pLogger.Log "<< Exit  " & mProcedureName, LogTag_Trace
+        pLogger.Log "<< Exit " & mProcedureName, LogTag_Trace
+        pLogger.ExitProcedureContext pPreviousCallPath
     End If
 End Sub
 

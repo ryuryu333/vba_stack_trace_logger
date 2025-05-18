@@ -16,6 +16,7 @@ Public Type LoggerLogInfoStruct
     IsIncludeCallerInfo As Boolean
     ModuleName As String
     ProcedureName  As String
+    CallPath As String
 End Type
 
 Public Enum LoggerLogTag
