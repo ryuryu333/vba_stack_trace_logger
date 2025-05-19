@@ -1,0 +1,83 @@
+@startuml シーケンス図 ロガー初期化
+title Logger Initialization Sequence
+
+actor User
+participant "Logger_SingletonManager" as SM #66CCFF
+participant "Logger_Facade" as LF
+participant "Logger_Controller" as LC
+participant "Logger_ILogWriter" as LIW
+participant "Logger_Writer_Excel" as LWE
+participant "Logger_Writer_Immediate" as LWI
+participant "LoggerConfigStruct" as LCS #FFFFCC
+
+User -> LCS : Create LoggerConfigStruct
+User -> LCS : Set parameters (IsWriteToExcelSheet, OutputExcelSheet, IsWriteToImmediate, etc.)
+User -> SM : NewMyLogger()
+activate SM
+    SM -> LF : new()
+    activate LF
+    LF --> SM : Logger_Facade instance
+    deactivate LF
+SM --> User : Logger_Facade instance
+deactivate SM
+
+User -> LF : Initialize(LoggerConfigStruct)
+activate LF
+    LF -> LC : new()
+    activate LC
+    LC --> LF : Logger_Controller instance
+    deactivate LC
+    LF -> LC : Initialize(LoggerConfigStruct)
+    activate LC
+        == Read LoggerConfigStruct & Create Writer ==
+        LC -> LCS : Read IsWriteToImmediate
+        alt IsWriteToImmediate = True
+            LC -> LWI : new()
+            activate LWI
+            LWI --> LC : Logger_Writer_Immediate instance
+            deactivate LWI
+            LC -> LC : AddWriter(Writer instance)
+        end
+        LC -> LCS : Read IsWriteToExcelSheet
+        alt IsWriteToExcelSheet = True
+            LC -> LWE : new()
+            activate LWE
+            LWE --> LC : Logger_Writer_Excel instance
+            deactivate LWE
+            LC -> LCS : Read OutputExcelSheet
+            alt OutputExcelSheet is set
+                LC -> LWE : SetTargetSheet(OutputExcelSheet)
+                activate LWE
+                LWE --> LC
+                deactivate LWE
+            else OutputExcelSheet is Nothing
+                LC -> User : MsgBox "Excel出力が有効...出力先のシートが設定されていません..."
+            end
+            LC -> LC : AddWriter(Writer instance)
+        end
+        == Read LoggerConfigStruct & Set Parameters ==
+        LC -> LCS : Read IsIncludeCallerInfo
+        LC -> LC : mIsIncludeCallerInfo \n  = IsIncludeCallerInfo
+        == Initialize Wirters ==
+        LC -> LC : InitializeWriters()
+        activate LC #LightGray
+        loop for each writer in mWriters
+            alt writer is Logger_Writer_Immediate
+                LC -> LWI : Initialize()
+                activate LWI
+                LWI --> LC
+                deactivate LWI
+            else writer is Logger_Writer_Excel
+                LC -> LWE : Initialize()
+                activate LWE
+                LWE --> LC
+                deactivate LWE
+            end
+        end
+        deactivate LC
+    LC --> LF
+    deactivate LC
+LF --> User
+deactivate LF
+
+@enduml
