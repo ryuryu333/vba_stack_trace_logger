@@ -10,94 +10,105 @@ Attribute VB_Exposed = False
 ' Logger_Controller.cls
 Option Explicit
 
-Private pMetadataProvider As Logger_MetadataProvider
-Private pWriters As Collection
-Private logInfo As LoggerLogInfoStruct
-Private pIsIncludeCallerInfo As Boolean
-Private pModuleName As String
-Private pProcedureName As String
+Private mMetadataProvider As Logger_MetadataProvider
+Private mWriters As Collection
+Private mIsIncludeCallerInfo As Boolean
+Private mCurrentCallPath As String
 
-Public Sub SetModuleName(ModuleName As String)
-    pModuleName = ModuleName
-End Sub
+' 初期化処理
+Public Sub Initialize(userLogSetting As LoggerConfigStruct)
+    ' メンバ変数を初期化
+    Set mMetadataProvider = New Logger_MetadataProvider
+    Set mWriters = New Collection
 
-Public Sub SetProcedureName(ProcedureName As String)
-    pProcedureName = ProcedureName
-End Sub
-
-Public Sub Initialize(LogConfig As LoggerConfigStruct)
-    Set pMetadataProvider = New Logger_MetadataProvider
-    Set pWriters = New Collection
-
-    If LogConfig.IsWriteToImmediate Then
+    ' ユーザー指定の設定を反映
+    
+    ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
+    ' イミディエイトウインドウ（VBE）
+    If userLogSetting.IsWriteToImmediate Then
         Dim immediateWriter As Logger_Writer_Immediate
         Set immediateWriter = New Logger_Writer_Immediate
         AddWriter immediateWriter
     End If
-
-    If LogConfig.IsWriteToExcelSheet Then
+    ' エクセルシート（どのエクセルシートに書き込むかも確認）
+    If userLogSetting.IsWriteToExcelSheet Then
         Dim excelWriter As Logger_Writer_Excel
         Set excelWriter = New Logger_Writer_Excel
-        If LogConfig.OutputExcelSheet Is Nothing Then
+        If userLogSetting.OutputExcelSheet Is Nothing Then
             MsgBox "Excel出力が有効になっていますが、出力先のシートが設定されていません。" & vbCrLf & _
                    "ログは正しく出力されません。", vbExclamation, "ログ設定の警告"
         Else
-            excelWriter.SetTargetSheet LogConfig.OutputExcelSheet
+            excelWriter.SetTargetSheet userLogSetting.OutputExcelSheet
         End If
         AddWriter excelWriter
     End If
     
-    pIsIncludeCallerInfo = LogConfig.IsIncludeCallerInfo
+    ' コールスタック情報を含めるかを設定
+    mIsIncludeCallerInfo = userLogSetting.IsIncludeCallerInfo
     
+    ' Logger_ILogWriter の具象クラスの初期化を実施
     InitializeWriters
 End Sub
 
-' Writerを追加登録
+' Writer を追加登録
 Public Sub AddWriter(writer As Logger_ILogWriter)
-    pWriters.Add writer
+    mWriters.Add writer
 End Sub
 
-' 各Writerを初期化
+' 各 Writer を初期化
 Public Sub InitializeWriters()
     Dim writer As Logger_ILogWriter
-    For Each writer In pWriters
+    For Each writer In mWriters
         writer.Initialize
     Next
 End Sub
 
-' ログを出力
+' ログ出力
+' logInfo に情報を書き込んだ後、writer に渡してログを出力させる
 Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
-    ' ログ情報の前処理
-    logInfo.TagName = GetTagName(logInfo.TagType)
-    logInfo.ModuleName = pModuleName
-    logInfo.ProcedureName = pProcedureName
-    pMetadataProvider.AttachMetadata logInfo
-    logInfo.IsIncludeCallerInfo = pIsIncludeCallerInfo
+    ' 呼び出し元情報を含めるかどうかのフラグを logInfo に設定
+    ' このフラグは LoggerConfigStruct で初期化時に設定されたもの
+    logInfo.IsIncludeCallerInfo = mIsIncludeCallerInfo
     
-    ' ログ出力命令
+    ' IsIncludeCallerInfo フラグに基づいて CallPath を設定
+    ' mCurrentCallPath（コールスタック情報）は別の関数で処理している
+    logInfo.CallPath = IIf(mIsIncludeCallerInfo, mCurrentCallPath, "")
+    
+    ' logInfo のメタ情報を付与
+    ' （TimeStamp、TagName、CallPath、ModuleName、ProcedureName）
+    mMetadataProvider.EnrichLogEntry logInfo
+    
+    ' 各 writer にログ出力を命令
     Dim writer As Logger_ILogWriter
-    For Each writer In pWriters
+    For Each writer In mWriters
         writer.WriteLog logInfo
     Next
+End Sub
+
+' 新しい関数が呼び出された際の処理
+Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
+    Dim newPathSegment As String
+    newPathSegment = currentModuleName & "." & currentProcName
+
+    ' 新しい関数を呼ばれた時点でのスタックトレース情報を返した後、情報を更新する
+    EnterProcedureContext = mCurrentCallPath
+    If Len(mCurrentCallPath) > 0 Then
+        mCurrentCallPath = newPathSegment & " < " & mCurrentCallPath
+    Else
+        mCurrentCallPath = newPathSegment
+    End If
+End Function
+
+Public Sub ExitProcedureContext(ByVal previousPath As String)
+    mCurrentCallPath = previousPath
 End Sub
 
 ' 各Writerの終了処理
 Public Sub TerminateWriters()
     Dim writer As Logger_ILogWriter
-    For Each writer In pWriters
+    For Each writer In mWriters
         writer.Terminate
     Next
 End Sub
-
-Private Function GetTagName(tagEnum As LoggerLogTag) As String
-    Select Case tagEnum
-        Case LogTag_Debug:    GetTagName = "DEBUG"
-        Case LogTag_Info:     GetTagName = "INFO"
-        Case LogTag_Warning:  GetTagName = "WARNING"
-        Case LogTag_Error:    GetTagName = "ERROR"
-        Case LogTag_Critical: GetTagName = "CRITICAL"
-        Case Else:            GetTagName = "INFO"
-    End Select
-End Function
 
 

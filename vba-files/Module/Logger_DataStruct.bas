@@ -9,13 +9,14 @@ Public Type LoggerConfigStruct
 End Type
 
 Public Type LoggerLogInfoStruct
-    Message As String
+    message As String
     TagType As LoggerLogTag
     TagName As String
     Timestamp As String
     IsIncludeCallerInfo As Boolean
     ModuleName As String
     ProcedureName  As String
+    CallPath As String
 End Type
 
 Public Enum LoggerLogTag
@@ -24,4 +25,5 @@ Public Enum LoggerLogTag
     LogTag_Warning = 2
     LogTag_Error = 3
     LogTag_Critical = 4
+    LogTag_Trace = 5
 End Enum
