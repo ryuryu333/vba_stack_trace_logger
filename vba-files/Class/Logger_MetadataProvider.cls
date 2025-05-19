@@ -54,8 +54,8 @@ Private Function GetTagName(ByVal tagEnum As LoggerLogTag) As String
 End Function
 
 ' 呼び出し元情報を導出
-Private Function GetCallerInfo(ByVal IsIncludeCallerInfo As Boolean, _
-                               ByVal CallPath As String, _
+Private Function GetCallerInfo(ByVal isIncludeCallerInfoSetting As Boolean, _
+                               ByVal currentCallPath As String, _
                                ByVal currentModuleName As String, _
                                ByVal currentProcedureName As String) As logCallerInfo
     ' 結果保存用の変数
@@ -63,7 +63,7 @@ Private Function GetCallerInfo(ByVal IsIncludeCallerInfo As Boolean, _
     
     ' （early return）呼び出し元情報を含めない、または、CallPath が空の場合
     ' ModuleName と ProcedureName を確実に空にする
-    If Not IsIncludeCallerInfo Or Len(CallPath) = 0 Then
+    If Not isIncludeCallerInfoSetting Or Len(currentCallPath) = 0 Then
         callerInfo.ModuleName = ""
         callerInfo.ProcedureName = ""
         GetCallerInfo = callerInfo
@@ -80,25 +80,25 @@ Private Function GetCallerInfo(ByVal IsIncludeCallerInfo As Boolean, _
         Exit Function
     End If
     
-    ' CallPath から呼び出し元情報（ModuleName、ProcedureName）を導出する
-    callerInfo = DeriveModuleAndProcedureNamesFromCallPath(CallPath, currentModuleName)
+    ' currentCallPath から呼び出し元情報（ModuleName、ProcedureName）を導出する
+    callerInfo = DeriveModuleAndProcedureNamesFromCallPath(currentCallPath, currentModuleName)
     GetCallerInfo = callerInfo
 End Function
 
-' CallPath から ModuleName と ProcedureName を導出
-Private Function DeriveModuleAndProcedureNamesFromCallPath(ByVal CallPath As String, _
+' currentCallPath から ModuleName と ProcedureName を導出
+Private Function DeriveModuleAndProcedureNamesFromCallPath(ByVal currentCallPath As String, _
                                                            ByVal currentModuleName As String) As logCallerInfo
     Dim callerInfo As logCallerInfo     ' 結果保存用の変数
-    Dim firstSegment As String          ' CallPath の最初のセグメント (例: "Module1.ProcA")
+    Dim firstSegment As String          ' currentCallPath の最初のセグメント (例: "Module1.ProcA")
     Dim dotPos As Long                  ' "." の位置
     Dim bracketPos As Long              ' " < " の位置 (コールスタック区切り)
 
-    ' CallPath から最初のプロシージャ呼び出し部分 (例: "Module1.ProcA < Module2.ProcB" から "Module1.ProcA") を抽出
-    bracketPos = InStr(CallPath, " < ")
+    ' currentCallPath から最初のプロシージャ呼び出し部分 (例: "Module1.ProcA < Module2.ProcB" から "Module1.ProcA") を抽出
+    bracketPos = InStr(currentCallPath, " < ")
     If bracketPos > 0 Then
-        firstSegment = Trim(Left(CallPath, bracketPos - 1))
+        firstSegment = Trim(Left(currentCallPath, bracketPos - 1))
     Else
-        firstSegment = Trim(CallPath) ' CallPath が単一の場合
+        firstSegment = Trim(currentCallPath) ' currentCallPath が単一の場合
     End If
 
     ' firstSegment が空なら、何も解析できないのでリターン

@@ -9,7 +9,7 @@ Public Type LoggerConfigStruct
 End Type
 
 Public Type LoggerLogInfoStruct
-    Message As String
+    message As String
     TagType As LoggerLogTag
     TagName As String
     Timestamp As String

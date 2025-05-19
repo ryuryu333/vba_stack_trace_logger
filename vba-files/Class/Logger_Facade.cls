@@ -10,57 +10,57 @@ Attribute VB_Exposed = False
 ' Logger_Facade.cls
 Option Explicit
 
-Private pController As Logger_Controller
-Private pIsInitialized As Boolean ' VBA の仕様で bool 初期値は Flase になるので、宣言だけして初期化は記載していません
+Private mController As Logger_Controller
+Private msInitialized As Boolean ' VBA の仕様で bool 初期値は Flase になるので、宣言だけして初期化は記載していません
 
-Public Sub Initialize(LogConfig As LoggerConfigStruct)
-    If pIsInitialized Then
+Public Sub Initialize(userLogSetting As LoggerConfigStruct)
+    If msInitialized Then
         Debug.Print "ロガーはすでに初期化されています、2回目の初期化は実行できません"
         Exit Sub
     End If
     
     Debug.Print "ロガーの初期化を開始します"
-    Set pController = New Logger_Controller
-    pController.Initialize LogConfig
-    pIsInitialized = True
+    Set mController = New Logger_Controller
+    mController.Initialize userLogSetting
+    msInitialized = True
     Debug.Print "ロガーの初期化が完了しました"
 End Sub
 
-Public Sub Log(Message As String, Optional Tag As LoggerLogTag = LogTag_Info)
-    If Not pIsInitialized Then
+Public Sub Log(message As String, Optional tag As LoggerLogTag = LogTag_Info)
+    If Not msInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
         Exit Sub
     End If
 
     Dim logInfo As LoggerLogInfoStruct
-    logInfo.Message = Message
-    logInfo.TagType = Tag
+    logInfo.message = message
+    logInfo.TagType = tag
 
-    pController.WriteLog logInfo
+    mController.WriteLog logInfo
 End Sub
 
-Public Function EnterProcedureContext(ByVal ModuleName As String, ByVal ProcName As String) As String
-    If Not pIsInitialized Then
+Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
+    If Not msInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.EnterProcedureContext", "ロガーが初期化されていません。"
         Exit Function
     End If
     
-    EnterProcedureContext = pController.EnterProcedureContext(ModuleName, ProcName)
+    EnterProcedureContext = mController.EnterProcedureContext(currentModuleName, currentProcName)
 End Function
 
 Public Sub ExitProcedureContext(ByVal previousPath As String)
-    If Not pIsInitialized Then
+    If Not msInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.ExitProcedureContext", "ロガーが初期化されていません。"
         Exit Sub
     End If
-    pController.ExitProcedureContext previousPath
+    mController.ExitProcedureContext previousPath
 End Sub
 
 Public Sub Terminate()
-    If Not pController Is Nothing Then
-        pController.TerminateWriters
-        Set pController = Nothing
+    If Not mController Is Nothing Then
+        mController.TerminateWriters
+        Set mController = Nothing
     End If
-    pIsInitialized = False
+    msInitialized = False
 End Sub
 

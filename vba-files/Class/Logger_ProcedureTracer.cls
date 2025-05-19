@@ -15,9 +15,9 @@ Private mProcedureName As String
 Private mPreviousCallPath As String
 Private mLogger As Logger_Facade
 
-Friend Sub Init(ByVal ModuleName As String, ByVal ProcName As String)
+Friend Sub Init(ByVal ModuleName As String, ByVal procName As String)
     mModuleName = ModuleName
-    mProcedureName = ProcName
+    mProcedureName = procName
 
     Set mLogger = MyLogger
     If Not mLogger Is Nothing Then

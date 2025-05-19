@@ -10,100 +10,103 @@ Attribute VB_Exposed = False
 ' Logger_Controller.cls
 Option Explicit
 
-Private pMetadataProvider As Logger_MetadataProvider
-Private pWriters As Collection
-Private pIsIncludeCallerInfo As Boolean
-Private pCurrentCallPath As String
+Private mMetadataProvider As Logger_MetadataProvider
+Private mWriters As Collection
+Private mIsIncludeCallerInfo As Boolean
+Private mCurrentCallPath As String
 
-Public Sub Initialize(LogConfig As LoggerConfigStruct)
-    Set pMetadataProvider = New Logger_MetadataProvider
-    Set pWriters = New Collection
+' 初期化処理
+Public Sub Initialize(userLogSetting As LoggerConfigStruct)
+    ' メンバ変数を初期化
+    Set mMetadataProvider = New Logger_MetadataProvider
+    Set mWriters = New Collection
 
-    If LogConfig.IsWriteToImmediate Then
+    ' ユーザー指定の設定を反映
+    
+    ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
+    ' イミディエイトウインドウ（VBE）
+    If userLogSetting.IsWriteToImmediate Then
         Dim immediateWriter As Logger_Writer_Immediate
         Set immediateWriter = New Logger_Writer_Immediate
         AddWriter immediateWriter
     End If
-
-    If LogConfig.IsWriteToExcelSheet Then
+    ' エクセルシート（どのエクセルシートに書き込むかも確認）
+    If userLogSetting.IsWriteToExcelSheet Then
         Dim excelWriter As Logger_Writer_Excel
         Set excelWriter = New Logger_Writer_Excel
-        If LogConfig.OutputExcelSheet Is Nothing Then
+        If userLogSetting.OutputExcelSheet Is Nothing Then
             MsgBox "Excel出力が有効になっていますが、出力先のシートが設定されていません。" & vbCrLf & _
                    "ログは正しく出力されません。", vbExclamation, "ログ設定の警告"
         Else
-            excelWriter.SetTargetSheet LogConfig.OutputExcelSheet
+            excelWriter.SetTargetSheet userLogSetting.OutputExcelSheet
         End If
         AddWriter excelWriter
     End If
     
-    pIsIncludeCallerInfo = LogConfig.IsIncludeCallerInfo
+    ' コールスタック情報を含めるかを設定
+    mIsIncludeCallerInfo = userLogSetting.IsIncludeCallerInfo
     
+    ' Logger_ILogWriter の具象クラスの初期化を実施
     InitializeWriters
 End Sub
 
-' Writerを追加登録
+' Writer を追加登録
 Public Sub AddWriter(writer As Logger_ILogWriter)
-    pWriters.Add writer
+    mWriters.Add writer
 End Sub
 
-' 各Writerを初期化
+' 各 Writer を初期化
 Public Sub InitializeWriters()
     Dim writer As Logger_ILogWriter
-    For Each writer In pWriters
+    For Each writer In mWriters
         writer.Initialize
     Next
 End Sub
 
-' ログを出力
+' ログ出力
+' logInfo に情報を書き込んだ後、writer に渡してログを出力させる
 Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
     ' 呼び出し元情報を含めるかどうかのフラグを logInfo に設定
     ' このフラグは LoggerConfigStruct で初期化時に設定されたもの
-    logInfo.IsIncludeCallerInfo = pIsIncludeCallerInfo
+    logInfo.IsIncludeCallerInfo = mIsIncludeCallerInfo
     
     ' IsIncludeCallerInfo フラグに基づいて CallPath を設定
-    If pIsIncludeCallerInfo Then
-        logInfo.CallPath = pCurrentCallPath
-    Else
-        logInfo.CallPath = "" ' 呼び出し元情報を含めない場合は CallPath を空にする
-    End If
+    ' mCurrentCallPath（コールスタック情報）は別の関数で処理している
+    logInfo.CallPath = IIf(mIsIncludeCallerInfo, mCurrentCallPath, "")
     
-    ' メタ情報を付与
-    ' （logInfo の TimeStamp、TagName、CallPath、ModuleName、ProcedureName）
-    pMetadataProvider.EnrichLogEntry logInfo
+    ' logInfo のメタ情報を付与
+    ' （TimeStamp、TagName、CallPath、ModuleName、ProcedureName）
+    mMetadataProvider.EnrichLogEntry logInfo
     
-    ' ログ出力命令
+    ' 各 writer にログ出力を命令
     Dim writer As Logger_ILogWriter
-    For Each writer In pWriters
+    For Each writer In mWriters
         writer.WriteLog logInfo
     Next
 End Sub
 
-
-
 ' 新しい関数が呼び出された際の処理
-Public Function EnterProcedureContext(ByVal ModuleName As String, ByVal ProcName As String) As String
+Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
     Dim newPathSegment As String
-    newPathSegment = ModuleName & "." & ProcName
+    newPathSegment = currentModuleName & "." & currentProcName
 
     ' 新しい関数を呼ばれた時点でのスタックトレース情報を返した後、情報を更新する
-    EnterProcedureContext = pCurrentCallPath
-
-    If Len(pCurrentCallPath) > 0 Then
-        pCurrentCallPath = newPathSegment & " < " & pCurrentCallPath
+    EnterProcedureContext = mCurrentCallPath
+    If Len(mCurrentCallPath) > 0 Then
+        mCurrentCallPath = newPathSegment & " < " & mCurrentCallPath
     Else
-        pCurrentCallPath = newPathSegment
+        mCurrentCallPath = newPathSegment
     End If
 End Function
 
 Public Sub ExitProcedureContext(ByVal previousPath As String)
-    pCurrentCallPath = previousPath
+    mCurrentCallPath = previousPath
 End Sub
 
 ' 各Writerの終了処理
 Public Sub TerminateWriters()
     Dim writer As Logger_ILogWriter
-    For Each writer In pWriters
+    For Each writer In mWriters
         writer.Terminate
     Next
 End Sub

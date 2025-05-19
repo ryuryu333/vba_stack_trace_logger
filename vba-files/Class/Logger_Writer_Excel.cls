@@ -11,64 +11,64 @@ Attribute VB_Exposed = False
 Option Explicit
 Implements Logger_ILogWriter
 
-Private pOutputSheet As Worksheet
-Private pCurrentRow As Long
+Private mOutputSheet As Worksheet
+Private mCurrentRow As Long
 
 ' 出力先シートを設定
 Public Sub SetTargetSheet(sheet As Worksheet)
-    Set pOutputSheet = sheet
+    Set mOutputSheet = sheet
 End Sub
 
 Private Sub Logger_ILogWriter_Initialize()
-    If pOutputSheet Is Nothing Then
+    If mOutputSheet Is Nothing Then
         MsgBox "Logger_ExcelWriter: 出力先のシートが設定されていません。", vbExclamation
         Exit Sub
     End If
 
-    With pOutputSheet
+    With mOutputSheet
         .Cells(1, 1).value = "Timestamp"
         .Cells(1, 2).value = "Tag"
         .Cells(1, 3).value = "呼び出し元情報" ' Changed from Module
         .Cells(1, 4).value = "Message"       ' Changed from Procedure (and effectively was Message)
     End With
     
-    With pOutputSheet.Range("A1:D1") ' Adjusted range to D1
+    With mOutputSheet.Range("A1:D1") ' Adjusted range to D1
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
         .Font.Bold = True
     End With
 
-    pCurrentRow = 2  ' ログ出力開始行
+    mCurrentRow = 2  ' ログ出力開始行
 
     Debug.Print "エクセル用のロガーを初期化しました"
 End Sub
 
 Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
-    If pOutputSheet Is Nothing Then Exit Sub
+    If mOutputSheet Is Nothing Then Exit Sub
 
-    With pOutputSheet
-        .Cells(pCurrentRow, 1).value = logInfo.Timestamp
-        .Cells(pCurrentRow, 1).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
-        .Cells(pCurrentRow, 2).value = logInfo.TagName
+    With mOutputSheet
+        .Cells(mCurrentRow, 1).value = logInfo.Timestamp
+        .Cells(mCurrentRow, 1).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
+        .Cells(mCurrentRow, 2).value = logInfo.TagName
 
         If logInfo.IsIncludeCallerInfo Then
             If Len(logInfo.CallPath) > 0 Then
-                .Cells(pCurrentRow, 3).value = logInfo.CallPath
+                .Cells(mCurrentRow, 3).value = logInfo.CallPath
             ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then
-                .Cells(pCurrentRow, 3).value = logInfo.ModuleName & "." & logInfo.ProcedureName
+                .Cells(mCurrentRow, 3).value = logInfo.ModuleName & "." & logInfo.ProcedureName
             Else
-                .Cells(pCurrentRow, 3).value = "" ' No specific caller info
+                .Cells(mCurrentRow, 3).value = "" ' No specific caller info
             End If
         Else
-            .Cells(pCurrentRow, 3).value = "" ' Caller info not requested
+            .Cells(mCurrentRow, 3).value = "" ' Caller info not requested
         End If
 
-        .Cells(pCurrentRow, 4).value = logInfo.Message ' Message now in column D
+        .Cells(mCurrentRow, 4).value = logInfo.message ' Message now in column D
         
-        .Range(.Cells(pCurrentRow, 1), .Cells(pCurrentRow, 4)).VerticalAlignment = xlCenter ' Adjusted range to column D
+        .Range(.Cells(mCurrentRow, 1), .Cells(mCurrentRow, 4)).VerticalAlignment = xlCenter ' Adjusted range to column D
         
         ' 最初の出力（2行目）のときだけ列幅を AutoFit
-        If pCurrentRow = 2 Then
+        If mCurrentRow = 2 Then
             .Columns("A:D").AutoFit ' Adjusted range to column D
         End If
         
@@ -84,18 +84,18 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         End Select
     
         If bgColor <> xlNone Then
-            .Range(.Cells(pCurrentRow, 1), .Cells(pCurrentRow, 4)).Interior.Color = bgColor ' Adjusted range to column D
+            .Range(.Cells(mCurrentRow, 1), .Cells(mCurrentRow, 4)).Interior.Color = bgColor ' Adjusted range to column D
         End If
             
     End With
     
-    pCurrentRow = pCurrentRow + 1
+    mCurrentRow = mCurrentRow + 1
 End Sub
 
 Private Sub Logger_ILogWriter_Terminate()
-    If Not pOutputSheet Is Nothing Then
+    If Not mOutputSheet Is Nothing Then
         On Error Resume Next ' Handle cases where sheet might not be available
-        pOutputSheet.Columns("A:D").AutoFit ' Adjusted range to column D
+        mOutputSheet.Columns("A:D").AutoFit ' Adjusted range to column D
         On Error GoTo 0
     End If
 End Sub
