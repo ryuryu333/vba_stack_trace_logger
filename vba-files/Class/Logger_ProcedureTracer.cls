@@ -12,28 +12,25 @@ Option Explicit
 
 Private mModuleName As String
 Private mProcedureName As String
-Private pPreviousCallPath As String
-Private pLogger As Logger_Facade
+Private mPreviousCallPath As String
+Private mLogger As Logger_Facade
 
-Friend Sub Init(ByVal ModuleName As String, _
-                ByVal ProcName As String)
+Friend Sub Init(ByVal ModuleName As String, ByVal ProcName As String)
     mModuleName = ModuleName
     mProcedureName = ProcName
 
-    Set pLogger = MyLogger
-    If Not pLogger Is Nothing Then
-        pPreviousCallPath = pLogger.EnterProcedureContext(mModuleName, mProcedureName)
-        pLogger.SetCallerInfo mModuleName, mProcedureName
-        pLogger.Log ">> Enter " & mProcedureName, LogTag_Trace
+    Set mLogger = MyLogger
+    If Not mLogger Is Nothing Then
+        mPreviousCallPath = mLogger.EnterProcedureContext(mModuleName, mProcedureName)
+        mLogger.Log ">> Enter " & mProcedureName, LogTag_Trace
     End If
 End Sub
 
 Private Sub Class_Terminate()
     On Error Resume Next
-    If Not pLogger Is Nothing Then
-        pLogger.SetCallerInfo mModuleName, mProcedureName
-        pLogger.Log "<< Exit " & mProcedureName, LogTag_Trace
-        pLogger.ExitProcedureContext pPreviousCallPath
+    If Not mLogger Is Nothing Then
+        mLogger.Log "<< Exit  " & mProcedureName, LogTag_Trace
+        mLogger.ExitProcedureContext mPreviousCallPath
     End If
 End Sub
 

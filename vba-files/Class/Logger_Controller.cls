@@ -12,19 +12,8 @@ Option Explicit
 
 Private pMetadataProvider As Logger_MetadataProvider
 Private pWriters As Collection
-Private logInfo As LoggerLogInfoStruct
 Private pIsIncludeCallerInfo As Boolean
-Private pModuleName As String
-Private pProcedureName As String
 Private pCurrentCallPath As String
-
-Public Sub SetModuleName(ModuleName As String)
-    pModuleName = ModuleName
-End Sub
-
-Public Sub SetProcedureName(ProcedureName As String)
-    pProcedureName = ProcedureName
-End Sub
 
 Public Sub Initialize(LogConfig As LoggerConfigStruct)
     Set pMetadataProvider = New Logger_MetadataProvider
@@ -68,17 +57,20 @@ End Sub
 
 ' ログを出力
 Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
-    ' ログ情報の前処理
-    logInfo.TagName = GetTagName(logInfo.TagType)
-    logInfo.ModuleName = pModuleName
-    logInfo.ProcedureName = pProcedureName
-    pMetadataProvider.AttachMetadata logInfo
+    ' 呼び出し元情報を含めるかどうかのフラグを logInfo に設定
+    ' このフラグは LoggerConfigStruct で初期化時に設定されたもの
     logInfo.IsIncludeCallerInfo = pIsIncludeCallerInfo
+    
+    ' IsIncludeCallerInfo フラグに基づいて CallPath を設定
     If pIsIncludeCallerInfo Then
         logInfo.CallPath = pCurrentCallPath
     Else
-        logInfo.CallPath = ""
+        logInfo.CallPath = "" ' 呼び出し元情報を含めない場合は CallPath を空にする
     End If
+    
+    ' メタ情報を付与
+    ' （logInfo の TimeStamp、TagName、CallPath、ModuleName、ProcedureName）
+    pMetadataProvider.EnrichLogEntry logInfo
     
     ' ログ出力命令
     Dim writer As Logger_ILogWriter
@@ -86,6 +78,8 @@ Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
         writer.WriteLog logInfo
     Next
 End Sub
+
+
 
 ' 新しい関数が呼び出された際の処理
 Public Function EnterProcedureContext(ByVal ModuleName As String, ByVal ProcName As String) As String
@@ -113,17 +107,5 @@ Public Sub TerminateWriters()
         writer.Terminate
     Next
 End Sub
-
-Private Function GetTagName(tagEnum As LoggerLogTag) As String
-    Select Case tagEnum
-        Case LogTag_Debug:    GetTagName = "DEBUG"
-        Case LogTag_Info:     GetTagName = "INFO"
-        Case LogTag_Warning:  GetTagName = "WARNING"
-        Case LogTag_Error:    GetTagName = "ERROR"
-        Case LogTag_Critical: GetTagName = "CRITICAL"
-        Case LogTag_Trace:    GetTagName = "Trace"
-        Case Else:            GetTagName = "INFO"
-    End Select
-End Function
 
 

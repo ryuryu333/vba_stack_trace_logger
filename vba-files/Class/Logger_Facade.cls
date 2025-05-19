@@ -18,6 +18,7 @@ Public Sub Initialize(LogConfig As LoggerConfigStruct)
         Debug.Print "ロガーはすでに初期化されています、2回目の初期化は実行できません"
         Exit Sub
     End If
+    
     Debug.Print "ロガーの初期化を開始します"
     Set pController = New Logger_Controller
     pController.Initialize LogConfig
@@ -27,7 +28,8 @@ End Sub
 
 Public Sub Log(Message As String, Optional Tag As LoggerLogTag = LogTag_Info)
     If Not pIsInitialized Then
-        Err.Raise vbObjectError, "Logger_Facade.Initialize が実行されていません、先に初期化してください"
+        Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
+        Exit Sub
     End If
 
     Dim logInfo As LoggerLogInfoStruct
@@ -38,33 +40,27 @@ Public Sub Log(Message As String, Optional Tag As LoggerLogTag = LogTag_Info)
 End Sub
 
 Public Function EnterProcedureContext(ByVal ModuleName As String, ByVal ProcName As String) As String
-    If Not pIsInitialized Or pController Is Nothing Then
+    If Not pIsInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.EnterProcedureContext", "ロガーが初期化されていません。"
-        Exit Function ' Should not happen if initialized
+        Exit Function
     End If
+    
     EnterProcedureContext = pController.EnterProcedureContext(ModuleName, ProcName)
 End Function
 
 Public Sub ExitProcedureContext(ByVal previousPath As String)
-    If Not pIsInitialized Or pController Is Nothing Then
+    If Not pIsInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.ExitProcedureContext", "ロガーが初期化されていません。"
-        Exit Sub ' Should not happen if initialized
+        Exit Sub
     End If
     pController.ExitProcedureContext previousPath
-End Sub
-
-Public Sub SetCallerInfo(ModuleName As String, ProcedureName As String)
-    If Not pIsInitialized Then
-        Err.Raise vbObjectError, "Logger_Facade.Initialize が実行されていません、先に初期化してください"
-    End If
-
-    pController.SetModuleName ModuleName
-    pController.SetProcedureName ProcedureName
 End Sub
 
 Public Sub Terminate()
     If Not pController Is Nothing Then
         pController.TerminateWriters
+        Set pController = Nothing
     End If
+    pIsInitialized = False
 End Sub
 
