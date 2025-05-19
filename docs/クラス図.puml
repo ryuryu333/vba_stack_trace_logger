@@ -86,8 +86,8 @@ package "Log Writers" {
 }
 
 package "Data Structures (Type / Enum)" {
-    struct LoggerConfigStruct << (T,EEEE00) Type >>
-    struct LoggerLogInfoStruct << (T,EEEE00) Type >>
+    struct LoggerConfigStruct << (T,FFFFCC) Type >>
+    struct LoggerLogInfoStruct << (T,FFFFCC) Type >>
     enum LoggerLogTag
 }
 
