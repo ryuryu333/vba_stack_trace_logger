@@ -10,9 +10,26 @@ Attribute VB_Exposed = False
 ' Logger_MetadataProvider.cls
 Option Explicit
 
+#If VBA7 Then
+    Private Declare PtrSafe Sub GetLocalTime Lib "kernel32" (lpSystemTime As SYSTEMTIME)
+#Else
+    Private Declare Sub GetLocalTime Lib "kernel32" (lpSystemTime As SYSTEMTIME)
+#End If
+
 Private Type logCallerInfo
     ModuleName As String
     ProcedureName As String
+End Type
+
+Private Type SYSTEMTIME
+    wYear        As Integer
+    wMonth       As Integer
+    wDayOfWeek   As Integer
+    wDay         As Integer
+    wHour        As Integer
+    wMinute      As Integer
+    wSecond      As Integer
+    wMilliseconds As Integer
 End Type
 
 ' メタ情報を付与
@@ -30,14 +47,17 @@ End Sub
 
 ' 現在の時刻を導出
 Private Function GetTimeStamp() As String
-    Dim dt As Date
-    dt = Now
+    Dim st As SYSTEMTIME
+    GetLocalTime st
 
-    ' ミリ秒の計算、Timer の精度の問題でミリ秒単位の正確な時刻を表すものではないのに注意
-    Dim milliseconds As Long
-    milliseconds = (Timer - Int(Timer)) * 1000
-
-    GetTimeStamp = Format$(dt, "yyyy-mm-dd HH:nn:ss") & "." & Format$(milliseconds, "000")
+    GetTimeStamp = _
+        Format$(st.wYear, "0000") & "-" & _
+        Format$(st.wMonth, "00") & "-" & _
+        Format$(st.wDay, "00") & " " & _
+        Format$(st.wHour, "00") & ":" & _
+        Format$(st.wMinute, "00") & ":" & _
+        Format$(st.wSecond, "00") & "." & _
+        Format$(st.wMilliseconds, "000")
 End Function
 
 ' ログタグの Enum 値から、ログ表示用の文字列を導出
