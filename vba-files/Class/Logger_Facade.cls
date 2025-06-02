@@ -39,7 +39,7 @@ Public Sub Log(message As String, Optional tag As LoggerLogTag = LogTag_Info)
     mController.WriteLog logInfo
 End Sub
 
-Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
+Friend Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
     If Not msInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.EnterProcedureContext", "ロガーが初期化されていません。"
         Exit Function
@@ -48,7 +48,7 @@ Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal c
     EnterProcedureContext = mController.EnterProcedureContext(currentModuleName, currentProcName)
 End Function
 
-Public Sub ExitProcedureContext(ByVal previousPath As String)
+Friend Sub ExitProcedureContext(ByVal previousPath As String)
     If Not msInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.ExitProcedureContext", "ロガーが初期化されていません。"
         Exit Sub

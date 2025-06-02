@@ -15,7 +15,7 @@ Private mProcedureName As String
 Private mPreviousCallPath As String
 Private mLogger As Logger_Facade
 
-Friend Sub Init(ByVal ModuleName As String, ByVal procName As String)
+Public Sub Init(ByVal ModuleName As String, ByVal procName As String)
     mModuleName = ModuleName
     mProcedureName = procName
 

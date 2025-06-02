@@ -51,12 +51,12 @@ Public Sub Initialize(userLogSetting As LoggerConfigStruct)
 End Sub
 
 ' Writer ‚ğ’Ç‰Á“o˜^
-Public Sub AddWriter(writer As Logger_ILogWriter)
+Private Sub AddWriter(writer As Logger_ILogWriter)
     mWriters.Add writer
 End Sub
 
 ' Še Writer ‚ğ‰Šú‰»
-Public Sub InitializeWriters()
+Private Sub InitializeWriters()
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
         writer.Initialize
