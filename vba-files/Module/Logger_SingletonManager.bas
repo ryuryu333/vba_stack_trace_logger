@@ -7,7 +7,7 @@ Private mLogger As Logger_Facade
 ' グローバルからアクセスするための関数
 Public Function MyLogger() As Logger_Facade
     If mLogger Is Nothing Then
-        Err.Raise vbObjectError, "Logger_SingletonManager.MyLogger", "Loggerが初期化されていません。先にNewMyLoggerを実行してください。"
+        Set mLogger = New Logger_Facade
     End If
     Set MyLogger = mLogger
 End Function
