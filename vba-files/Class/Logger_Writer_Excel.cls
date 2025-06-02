@@ -25,6 +25,12 @@ Private Sub Logger_ILogWriter_Initialize()
         Exit Sub
     End If
 
+    ' 過去のログ内容と背景色をクリア (A列からD列)
+    With mOutputSheet.Columns("A:D")
+        .ClearContents ' 内容を消去
+        .Interior.ColorIndex = xlNone ' 背景色をクリア
+    End With
+
     With mOutputSheet
         .Cells(1, 1).value = "Timestamp"
         .Cells(1, 2).value = "Tag"
