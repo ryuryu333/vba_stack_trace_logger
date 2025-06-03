@@ -66,6 +66,9 @@ End Sub
 ' ログ出力
 ' logInfo に情報を書き込んだ後、writer に渡してログを出力させる
 Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
+    ' スタックトレース機能がオフの場合、スタックトレースに起因するログ出力指示は無視する
+    If mIsIncludeCallerInfo = False And logInfo.TagType = LogTag_Trace Then Exit Sub
+
     ' 呼び出し元情報を含めるかどうかのフラグを logInfo に設定
     ' このフラグは LoggerConfigStruct で初期化時に設定されたもの
     logInfo.IsIncludeCallerInfo = mIsIncludeCallerInfo
