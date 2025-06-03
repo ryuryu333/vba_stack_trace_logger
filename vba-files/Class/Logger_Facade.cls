@@ -8,13 +8,18 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_Facade.cls
+' ユーザーインターフェースをここに集約している
+' ユーザーは Logger_SingletonManager 経由で Logger_Facade にアクセス
+' myLogger.SomeFunction と利用する
 Option Explicit
 
 Private mController As Logger_Controller
-Private msInitialized As Boolean ' VBA の仕様で bool 初期値は Flase になるので、宣言だけして初期化は記載していません
+Private mIsInitialized As Boolean ' VBA の仕様で bool 初期値は Flase になるので、宣言だけして初期化は未記載
 
+' === ロガーの基本的な処理 ===
+' ロガーの初期化処理を指示
 Public Sub Initialize(userLogSetting As LoggerConfigStruct)
-    If msInitialized Then
+    If mIsInitialized Then
         Debug.Print "ロガーはすでに初期化されています、2回目の初期化は実行できません"
         Exit Sub
     End If
@@ -22,15 +27,13 @@ Public Sub Initialize(userLogSetting As LoggerConfigStruct)
     Debug.Print "ロガーの初期化を開始します"
     Set mController = New Logger_Controller
     mController.Initialize userLogSetting
-    msInitialized = True
+    mIsInitialized = True
     Debug.Print "ロガーの初期化が完了しました"
 End Sub
 
+' ログ出力を指示
 Public Sub Log(message As String, Optional tag As LoggerLogTag = LogTag_Info)
-    If Not msInitialized Then
-        Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
-        Exit Sub
-    End If
+    EnsureInitialized
 
     Dim logInfo As LoggerLogInfoStruct
     logInfo.message = message
@@ -39,28 +42,51 @@ Public Sub Log(message As String, Optional tag As LoggerLogTag = LogTag_Info)
     mController.WriteLog logInfo
 End Sub
 
-Friend Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
-    If Not msInitialized Then
-        Err.Raise vbObjectError + 513, "Logger_Facade.EnterProcedureContext", "ロガーが初期化されていません。"
-        Exit Function
-    End If
-    
-    EnterProcedureContext = mController.EnterProcedureContext(currentModuleName, currentProcName)
-End Function
-
-Friend Sub ExitProcedureContext(ByVal previousPath As String)
-    If Not msInitialized Then
-        Err.Raise vbObjectError + 513, "Logger_Facade.ExitProcedureContext", "ロガーが初期化されていません。"
-        Exit Sub
-    End If
-    mController.ExitProcedureContext previousPath
-End Sub
-
+' ロガーの終了処理を指示
 Public Sub Terminate()
+    EnsureInitialized
+    
     If Not mController Is Nothing Then
         mController.TerminateWriters
         Set mController = Nothing
     End If
-    msInitialized = False
+    mIsInitialized = False
 End Sub
 
+' === スタックトレース関連 ===
+' スタックトレース機能を利用する
+' Logger_ProcedureTracer のライフサイクルを利用しているので、インスタンスを返す
+Public Function UsingTracer(ByVal currentModuleName As String, _
+                            ByVal currentProcName As String) As Logger_ProcedureTracer
+    EnsureInitialized
+    
+    Dim tracer As New Logger_ProcedureTracer
+    tracer.Init currentModuleName, currentProcName
+    Set UsingTracer = tracer
+End Function
+
+' ユーザーが直接呼出し不可
+' Logger_ProcedureTracer 生成時に呼び出し
+Friend Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
+    EnsureInitialized
+    
+    EnterProcedureContext = mController.EnterProcedureContext(currentModuleName, currentProcName)
+End Function
+
+' ユーザーが直接呼出し不可
+' Logger_ProcedureTracer 破棄時に呼び出し
+Friend Sub ExitProcedureContext(ByVal previousPath As String)
+    EnsureInitialized
+    
+    mController.ExitProcedureContext previousPath
+End Sub
+
+' === Private 関数 ===
+' 初期化済みか確認
+Private Function EnsureInitialized()
+    If Not mIsInitialized Then
+        MsgBox "ロガーが初期化されていません。先に Initialize を呼び出してください。"
+        Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
+        Exit Function
+    End If
+End Function
