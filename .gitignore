@@ -1,12 +1,7 @@
-/node_modules
-logs
-/xvba_excel_backup
+# VS Code files
+.vscode/*
+*.code-workspace
 
+# Excel files
+*.xlsx
 *.xlsm
-*.xlam
-
-# 関係ないコードファイルを除外
-vba-files/Class/ClassHoge.cls
-vba-files/Class/Sheet2.cls
-vba-files/Class/ThisWorkbook.cls
-vba-files/Module/Module1.bas
