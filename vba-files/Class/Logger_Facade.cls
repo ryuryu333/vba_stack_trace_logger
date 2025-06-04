@@ -9,8 +9,9 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_Facade.cls
 ' ƒ†[ƒU[ƒCƒ“ƒ^[ƒtƒF[ƒX‚ğ‚±‚±‚ÉW–ñ‚µ‚Ä‚¢‚é
-' ƒ†[ƒU[‚Í Logger_SingletonManager Œo—R‚Å Logger_Facade ‚ÉƒAƒNƒZƒX
-' myLogger.SomeFunction ‚Æ—˜—p‚·‚é
+' ƒ†[ƒU[‚Í Logger_Provider Œo—R‚Å Logger_Facade ‚ÉƒAƒNƒZƒX‚·‚é
+' iÀÛ‚Ì—¬‚ê‚Í Logger_Provider -> Logger_SingletonManager -> Logger_Facadej
+' myLogger.Log ‚Ì—l‚É—˜—p‚·‚é
 Option Explicit
 
 Private mController As Logger_Controller
@@ -18,7 +19,18 @@ Private mIsInitialized As Boolean ' VBA ‚Ìd—l‚Å bool ‰Šú’l‚Í Flase ‚É‚È‚é‚Ì‚Å
 
 ' === ƒƒK[‚ÌŠî–{“I‚Èˆ— ===
 ' ƒƒK[‚Ì‰Šú‰»ˆ—‚ğw¦
-Public Sub Initialize(userLogSetting As LoggerConfigStruct)
+Public Sub Initialize(Optional includeCallerInfo As Boolean = False, _
+                               Optional writeToImmediate As Boolean = True, _
+                               Optional writeToExcel As Boolean = False, _
+                               Optional targetSheet As Worksheet = Nothing)
+    Dim config As LoggerConfigStruct
+    With config
+        .IsIncludeCallerInfo = includeCallerInfo
+        .IsWriteToImmediate = writeToImmediate
+        .IsWriteToExcelSheet = writeToExcel
+        Set .OutputExcelSheet = targetSheet
+    End With
+    
     If mIsInitialized Then
         Debug.Print "ƒƒK[‚Í‚·‚Å‚É‰Šú‰»‚³‚ê‚Ä‚¢‚Ü‚·A2‰ñ–Ú‚Ì‰Šú‰»‚ÍÀs‚Å‚«‚Ü‚¹‚ñ"
         Exit Sub
@@ -26,7 +38,7 @@ Public Sub Initialize(userLogSetting As LoggerConfigStruct)
     
     Debug.Print "ƒƒK[‚Ì‰Šú‰»‚ğŠJn‚µ‚Ü‚·"
     Set mController = New Logger_Controller
-    mController.Initialize userLogSetting
+    mController.Initialize config
     mIsInitialized = True
     Debug.Print "ƒƒK[‚Ì‰Šú‰»‚ªŠ®—¹‚µ‚Ü‚µ‚½"
 End Sub
@@ -81,6 +93,13 @@ Friend Sub ExitProcedureContext(ByVal previousPath As String)
     mController.ExitProcedureContext previousPath
 End Sub
 
+' === utility ŠÖ” ===
+' Logger_SingletonManager ‚Ì Logger_Facade ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ”jŠü‚·‚é
+Public Sub Reset()
+    ReleaseMyLogger
+End Sub
+
+
 ' === Private ŠÖ” ===
 ' ‰Šú‰»Ï‚İ‚©Šm”F
 Private Function EnsureInitialized()
@@ -90,3 +109,9 @@ Private Function EnsureInitialized()
         Exit Function
     End If
 End Function
+
+' ƒfƒXƒgƒ‰ƒNƒ^
+Private Sub Class_Terminate()
+    ' ƒNƒ‰ƒX‚ª”jŠü‚³‚ê‚é‚Æ‚«‚ÌŒãˆ—
+    Debug.Print "Logger_Facade ‚ª”jŠü‚³‚ê‚Ü‚µ‚½"
+End Sub
