@@ -15,7 +15,7 @@ Attribute VB_Exposed = False
 Option Explicit
 
 Private mController As Logger_Controller
-Private mIsInitialized As Boolean ' VBA の仕様で bool 初期値は Flase になるので、宣言だけして初期化は未記載
+Private mIsInitialized As Boolean ' VBA の仕様で bool 初期値は False になるので、宣言だけして初期化は未記載
 
 ' === ロガーの基本的な処理 ===
 ' ロガーの初期化処理を指示
@@ -102,13 +102,12 @@ End Sub
 
 ' === Private 関数 ===
 ' 初期化済みか確認
-Private Function EnsureInitialized()
+Private Sub EnsureInitialized()
     If Not mIsInitialized Then
-        MsgBox "ロガーが初期化されていません。先に Initialize を呼び出してください。"
         Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
-        Exit Function
+        Exit Sub
     End If
-End Function
+End Sub
 
 ' デストラクタ
 Private Sub Class_Terminate()
