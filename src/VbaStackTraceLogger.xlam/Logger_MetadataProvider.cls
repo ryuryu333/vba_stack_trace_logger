@@ -37,10 +37,10 @@ Public Sub EnrichLogEntry(ByRef logInfo As LoggerLogInfoStruct)
     ' TimeStamp
     logInfo.Timestamp = GetTimeStamp()
     ' TagName
-    logInfo.TagName = GetTagName(logInfo.TagType)
+    logInfo.TagName = GetTagName(logInfo.tagType)
     ' ModuleNameÅAProcedureName
     Dim callerInfo As logCallerInfo
-    callerInfo = GetCallerInfo(logInfo.IsIncludeCallerInfo, logInfo.CallPath, logInfo.ModuleName, logInfo.ProcedureName)
+    callerInfo = GetCallerInfo(logInfo.isIncludeCallerInfo, logInfo.CallPath, logInfo.ModuleName, logInfo.ProcedureName)
     logInfo.ModuleName = callerInfo.ModuleName
     logInfo.ProcedureName = callerInfo.ProcedureName
 End Sub
