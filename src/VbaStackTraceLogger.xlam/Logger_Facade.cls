@@ -17,39 +17,33 @@ Option Explicit
 Private mController As Logger_Controller
 Private mIsInitialized As Boolean ' VBA の仕様で bool 初期値は False になるので、宣言だけして初期化は未記載
 
-' === ロガーの基本的な処理 ===
-' ロガーの初期化処理を指示
-Public Sub Initialize(Optional includeCallerInfo As Boolean = False, _
-                               Optional writeToImmediate As Boolean = True, _
-                               Optional writeToExcel As Boolean = False, _
-                               Optional targetSheet As Worksheet = Nothing)
-    Dim config As LoggerConfigStruct
-    With config
-        .IsIncludeCallerInfo = includeCallerInfo
-        .IsWriteToImmediate = writeToImmediate
-        .IsWriteToExcelSheet = writeToExcel
-        Set .OutputExcelSheet = targetSheet
-    End With
-    
-    If mIsInitialized Then
-        Debug.Print "ロガーはすでに初期化されています、2回目の初期化は実行できません"
-        Exit Sub
-    End If
-    
-    Debug.Print "ロガーの初期化を開始します"
+' コンストラクタ
+Private Sub Class_Initialize()
     Set mController = New Logger_Controller
-    mController.Initialize config
-    mIsInitialized = True
-    Debug.Print "ロガーの初期化が完了しました"
 End Sub
 
+' === ロガーの初期化処理を指示 ===
+Public Function Initialize() As Logger_ConfigBuilder
+    If mIsInitialized Then
+        Debug.Print "ロガーはすでに初期化されています、2回目の初期化は実行できません"
+        Exit Function
+    End If
+    
+    ' ビルダーで初期化に用いる設定値を作成
+    ' その後、Controller の初期化処理が呼び出される
+    Dim configBuilder As New Logger_ConfigBuilder
+    configBuilder.SetLoggerController mController
+    Set Initialize = configBuilder
+    mIsInitialized = True
+End Function
+
 ' ログ出力を指示
-Public Sub Log(message As String, Optional tag As LoggerLogTag = LogTag_Info)
+Public Sub Log(Message As String, Optional tag As LoggerLogTag = LogTag_Info)
     EnsureInitialized
 
     Dim logInfo As LoggerLogInfoStruct
-    logInfo.message = message
-    logInfo.TagType = tag
+    logInfo.Message = Message
+    logInfo.tagType = tag
 
     mController.WriteLog logInfo
 End Sub
@@ -58,10 +52,8 @@ End Sub
 Public Sub Terminate()
     EnsureInitialized
     
-    If Not mController Is Nothing Then
-        mController.TerminateWriters
-        Set mController = Nothing
-    End If
+    mController.Terminate
+    Set mController = Nothing
     mIsInitialized = False
 End Sub
 
@@ -99,18 +91,11 @@ Public Sub Reset()
     ReleaseMyLogger
 End Sub
 
-
-' === Private 関数 ===
+' === モジュール全体で利用される Private 関数 ===
 ' 初期化済みか確認
 Private Sub EnsureInitialized()
     If Not mIsInitialized Then
         Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
         Exit Sub
     End If
-End Sub
-
-' デストラクタ
-Private Sub Class_Terminate()
-    ' クラスが破棄されるときの後処理
-    Debug.Print "Logger_Facade が破棄されました"
 End Sub

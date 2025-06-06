@@ -12,82 +12,106 @@ Option Explicit
 
 Private mMetadataProvider As Logger_MetadataProvider
 Private mWriters As Collection
-Private mIsIncludeCallerInfo As Boolean
+Private mLoggerConfig As LoggerConfigStruct
 Private mCurrentCallPath As String
 
-' 初期化処理
-Public Sub Initialize(userLogSetting As LoggerConfigStruct)
-    ' メンバ変数を初期化
+Private Sub Class_Initialize()
     Set mMetadataProvider = New Logger_MetadataProvider
     Set mWriters = New Collection
+End Sub
 
-    ' ユーザー指定の設定を反映
+' === 初期化処理 ===
+Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
+    ' === ユーザーが入力したロガーの設定値が正常か判定、メンバ変数に代入 ===
+    ValidateConfig userConfig
+    mLoggerConfig = userConfig
     
+    '  === Writers の作成 ===
     ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
     ' イミディエイトウインドウ（VBE）
-    If userLogSetting.IsWriteToImmediate Then
-        Dim immediateWriter As Logger_Writer_Immediate
-        Set immediateWriter = New Logger_Writer_Immediate
+    If mLoggerConfig.IsWriteToImmediate Then
+        Dim immediateWriter As Logger_Writer_Immediate: Set immediateWriter = New Logger_Writer_Immediate
         AddWriter immediateWriter
     End If
-    ' エクセルシート（どのエクセルシートに書き込むかも確認）
-    If userLogSetting.IsWriteToExcelSheet Then
-        Dim excelWriter As Logger_Writer_Excel
-        Set excelWriter = New Logger_Writer_Excel
-        If userLogSetting.OutputExcelSheet Is Nothing Then
-            MsgBox "Excel出力が有効になっていますが、出力先のシートが設定されていません。" & vbCrLf & _
-                   "ログは正しく出力されません。", vbExclamation, "ログ設定の警告"
-        Else
-            excelWriter.SetTargetSheet userLogSetting.OutputExcelSheet
-        End If
+    ' エクセルシート（どのエクセルシートに書き込むかも設定）
+    If mLoggerConfig.IsWriteToExcelSheet Then
+        Dim excelWriter As Logger_Writer_Excel: Set excelWriter = New Logger_Writer_Excel
+        excelWriter.SetTargetSheet mLoggerConfig.OutputExcelSheet
         AddWriter excelWriter
     End If
     
-    ' コールスタック情報を含めるかを設定
-    mIsIncludeCallerInfo = userLogSetting.IsIncludeCallerInfo
-    
-    ' Logger_ILogWriter の具象クラスの初期化を実施
+    ' === Logger_ILogWriter の具象クラスの初期化を実施 ===
     InitializeWriters
 End Sub
 
-' Writer を追加登録
-Private Sub AddWriter(writer As Logger_ILogWriter)
-    mWriters.Add writer
+' 動的検証を実行、静的検証は Logger_ConfigBuilder にて実施
+Private Sub ValidateConfig(ByRef userConfig As LoggerConfigStruct)
+    ' Excel出力設定の検証
+    If userConfig.IsWriteToExcelSheet Then
+        ' エクセルシートにアクセスし、参照可能な状態かを確認
+        On Error Resume Next
+        Dim testValue As String
+        testValue = userConfig.OutputExcelSheet.Name
+        If Err.Number <> 0 Then
+            On Error GoTo 0
+            Err.Raise vbObjectError + 513, "Controller.ValidateConfig", _
+                      "指定されたエクセルシートにアクセスできません"
+        End If
+        On Error GoTo 0
+    End If
 End Sub
 
-' 各 Writer を初期化
-Private Sub InitializeWriters()
-    Dim writer As Logger_ILogWriter
-    For Each writer In mWriters
-        writer.Initialize
-    Next
-End Sub
-
-' ログ出力
-' logInfo に情報を書き込んだ後、writer に渡してログを出力させる
+' === ログ出力 ===
+' logInfo に情報を書き込んだ後、Writer に渡してログを出力させる
 Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
-    ' スタックトレース機能がオフの場合、スタックトレースに起因するログ出力指示は無視する
-    If mIsIncludeCallerInfo = False And logInfo.TagType = LogTag_Trace Then Exit Sub
-
-    ' 呼び出し元情報を含めるかどうかのフラグを logInfo に設定
-    ' このフラグは LoggerConfigStruct で初期化時に設定されたもの
-    logInfo.IsIncludeCallerInfo = mIsIncludeCallerInfo
+    ' === ロガーの設定を元に、ログ出力すべきかを判定 ===
+    If ShouldWriteLog(logInfo.tagType) = False Then Exit Sub
     
-    ' IsIncludeCallerInfo フラグに基づいて CallPath を設定
-    ' mCurrentCallPath（コールスタック情報）は別の関数で処理している
-    logInfo.CallPath = IIf(mIsIncludeCallerInfo, mCurrentCallPath, "")
+    ' === logInfo に情報を書き込む ===
+    With logInfo
+        .IsIncludeCallerInfo = mLoggerConfig.IsIncludeCallerInfo
+        .CallPath = IIf(.IsIncludeCallerInfo, mCurrentCallPath, "")
+    End With
     
-    ' logInfo のメタ情報を付与
+    ' === logInfo のメタ情報を付与 ===
     ' （TimeStamp、TagName、CallPath、ModuleName、ProcedureName）
     mMetadataProvider.EnrichLogEntry logInfo
     
-    ' 各 writer にログ出力を命令
+    ' === 各 Writer にログ出力を命令 ===
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
         writer.WriteLog logInfo
     Next
 End Sub
 
+' ロガーの設定を元に、ログ出力すべきかを判定
+' Falseとなるパターンを順番に評価、どれにも当てはまらなければTrue
+Private Function ShouldWriteLog(tagType As LoggerLogTag) As Boolean
+    ' ログ出力が有効かを確認
+    If mLoggerConfig.IsLoggingEnabled Then
+        ShouldWriteLog = True
+        Exit Function
+    End If
+    
+    ' スタックトレース機能が無効の場合
+    If mLoggerConfig.IsIncludeCallerInfo = False And tagType = LogTag_Trace Then
+        ShouldWriteLog = False
+        Exit Function
+    End If
+    
+    ' 特定のタグのログ出力が無効の場合
+    If mLoggerConfig.IsTagFilteringEnabled Then
+        Dim i As Integer
+        For i = LBound(mLoggerConfig.ExcludedTags) To UBound(mLoggerConfig.ExcludedTags)
+            If mLoggerConfig.ExcludedTags(i) = tagType Then
+                ShouldWriteLog = False
+                Exit Function
+            End If
+        Next i
+    End If
+End Function
+
+' === スタックトレースの呼び出し階層情報を更新 ===
 ' 新しい関数が呼び出された際の処理
 Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
     Dim newPathSegment As String
@@ -102,16 +126,41 @@ Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal c
     End If
 End Function
 
+' 関数が終了した際の処理
 Public Sub ExitProcedureContext(ByVal previousPath As String)
     mCurrentCallPath = previousPath
 End Sub
 
+' === 終了処理 ===
+Public Sub Terminate()
+    TerminateWriters
+End Sub
+
+' === Writer 関連の処理 ===
+' Writer を追加登録
+Private Sub AddWriter(writer As Logger_ILogWriter)
+    mWriters.Add writer
+End Sub
+
+' 各 Writer を初期化
+Private Sub InitializeWriters()
+    If mWriters Is Nothing Then Exit Sub
+    
+    Dim writer As Logger_ILogWriter
+    For Each writer In mWriters
+        writer.Initialize
+    Next
+End Sub
+
 ' 各Writerの終了処理
-Public Sub TerminateWriters()
+Private Sub TerminateWriters()
+    If mWriters Is Nothing Then Exit Sub
+    
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
         writer.Terminate
     Next
 End Sub
+
 
 

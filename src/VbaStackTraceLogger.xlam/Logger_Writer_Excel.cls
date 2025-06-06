@@ -69,7 +69,7 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
             .Cells(mCurrentRow, 3).value = "" ' Caller info not requested
         End If
 
-        .Cells(mCurrentRow, 4).value = logInfo.message ' Message now in column D
+        .Cells(mCurrentRow, 4).value = logInfo.Message ' Message now in column D
         
         .Range(.Cells(mCurrentRow, 1), .Cells(mCurrentRow, 4)).VerticalAlignment = xlCenter ' Adjusted range to column D
         
@@ -80,7 +80,7 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         
         ' 背景色の適用
         Dim bgColor As Long
-        Select Case logInfo.TagType
+        Select Case logInfo.tagType
             Case LogTag_Warning
                 bgColor = RGB(255, 255, 153)  ' 薄い黄色
             Case LogTag_Error, LogTag_Critical

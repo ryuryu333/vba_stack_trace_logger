@@ -34,7 +34,7 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
     Debug.Print "[" & logInfo.Timestamp & "]" & _
                 "[" & logInfo.TagName & "]" & _
                 IIf(Len(outputContext) > 0, " " & outputContext, "") & _
-                IIf(Len(logInfo.message) > 0, " " & logInfo.message, "")
+                IIf(Len(logInfo.Message) > 0, " " & logInfo.Message, "")
 End Sub
 
 Private Sub Logger_ILogWriter_Terminate()
