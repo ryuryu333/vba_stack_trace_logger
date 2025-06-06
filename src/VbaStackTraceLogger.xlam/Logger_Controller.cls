@@ -15,12 +15,13 @@ Private mWriters As Collection
 Private mLoggerConfig As LoggerConfigStruct
 Private mCurrentCallPath As String
 
-' === 初期化処理 ===
-Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
-    ' === メンバ変数を初期化 ===
+Private Sub Class_Initialize()
     Set mMetadataProvider = New Logger_MetadataProvider
     Set mWriters = New Collection
+End Sub
 
+' === 初期化処理 ===
+Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
     ' === ユーザーが入力したロガーの設定値が正常か判定、メンバ変数に代入 ===
     ValidateConfig userConfig
     mLoggerConfig = userConfig
@@ -28,14 +29,14 @@ Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
     '  === Writers の作成 ===
     ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
     ' イミディエイトウインドウ（VBE）
-    If mLoggerConfig.isWriteToImmediate Then
+    If mLoggerConfig.IsWriteToImmediate Then
         Dim immediateWriter As Logger_Writer_Immediate: Set immediateWriter = New Logger_Writer_Immediate
         AddWriter immediateWriter
     End If
     ' エクセルシート（どのエクセルシートに書き込むかも設定）
-    If mLoggerConfig.isWriteToExcelSheet Then
+    If mLoggerConfig.IsWriteToExcelSheet Then
         Dim excelWriter As Logger_Writer_Excel: Set excelWriter = New Logger_Writer_Excel
-        excelWriter.SetTargetSheet mLoggerConfig.outputExcelSheet
+        excelWriter.SetTargetSheet mLoggerConfig.OutputExcelSheet
         AddWriter excelWriter
     End If
     
@@ -43,51 +44,21 @@ Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
     InitializeWriters
 End Sub
 
-' ユーザーが入力したロガーの設定値が正常か判定
-Private Function ValidateConfig(ByRef userConfig As LoggerConfigStruct)
-    ' 検証結果を収納する
-    Dim isValid As Boolean: isValid = True
-    Dim errorMessage As String: errorMessage = ""
-    
-    ' タグフィルタリング設定の検証
-    If userConfig.isTagFilteringEnabled Then
-        ' excludedTags の検証
-        ' Function CreateDisabledTags を利用して excludedTags 値が代入されている前提
-        ' -> 重複のない、0 個以上の要素を持つ、LoggerLogTag 配列、となっている
-        
-        ' 配列数を確認
-        Dim tagCount As Long
-        tagCount = UBound(userConfig.excludedTags) - LBound(userConfig.excludedTags) + 1
-        If tagCount <= 0 Then
-            isValid = False
-            errorMessage = errorMessage & "・excludedTags にタグが指定されていません"
-        End If
-    End If
-    
+' 動的検証を実行、静的検証は Logger_ConfigBuilder にて実施
+Private Sub ValidateConfig(ByRef userConfig As LoggerConfigStruct)
     ' Excel出力設定の検証
-    If userConfig.isWriteToExcelSheet Then
-        ' エクセルシートが指定されているか確認
-        If userConfig.outputExcelSheet Is Nothing Then
-            isValid = False
-            errorMessage = errorMessage & "・Excel出力が有効ですが、出力先シート(outputExcelSheet)が設定されていません"
-        End If
+    If userConfig.IsWriteToExcelSheet Then
         ' エクセルシートにアクセスし、参照可能な状態かを確認
         On Error Resume Next
-        Dim testValue As Variant
-        testValue = userConfig.outputExcelSheet.Name
-        If Not Err.Number = 0 Then
-            isValid = False
-            errorMessage = errorMessage & "・指定されたエクセルシートにアクセスできません"
+        Dim testValue As String
+        testValue = userConfig.OutputExcelSheet.Name
+        If Err.Number <> 0 Then
+            On Error GoTo 0
+            Err.Raise vbObjectError + 513, "Controller.ValidateConfig", _
+                      "指定されたエクセルシートにアクセスできません"
         End If
         On Error GoTo 0
     End If
-    
-    ' 検証結果
-    If Not isValid Then Err.Raise vbObjectError + 513, "Logger_Controller.ValidateConfig", errorMessage
-End Function
-
-Sub a()
-    
 End Sub
 
 ' === ログ出力 ===
@@ -98,8 +69,8 @@ Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
     
     ' === logInfo に情報を書き込む ===
     With logInfo
-        .isIncludeCallerInfo = mLoggerConfig.isIncludeCallerInfo
-        .CallPath = IIf(.isIncludeCallerInfo, mCurrentCallPath, "")
+        .IsIncludeCallerInfo = mLoggerConfig.IsIncludeCallerInfo
+        .CallPath = IIf(.IsIncludeCallerInfo, mCurrentCallPath, "")
     End With
     
     ' === logInfo のメタ情報を付与 ===
@@ -117,22 +88,22 @@ End Sub
 ' Falseとなるパターンを順番に評価、どれにも当てはまらなければTrue
 Private Function ShouldWriteLog(tagType As LoggerLogTag) As Boolean
     ' ログ出力が有効かを確認
-    If mLoggerConfig.isLoggingEnabled Then
+    If mLoggerConfig.IsLoggingEnabled Then
         ShouldWriteLog = True
         Exit Function
     End If
     
     ' スタックトレース機能が無効の場合
-    If mLoggerConfig.isIncludeCallerInfo = False And tagType = LogTag_Trace Then
+    If mLoggerConfig.IsIncludeCallerInfo = False And tagType = LogTag_Trace Then
         ShouldWriteLog = False
         Exit Function
     End If
     
     ' 特定のタグのログ出力が無効の場合
-    If mLoggerConfig.isTagFilteringEnabled Then
+    If mLoggerConfig.IsTagFilteringEnabled Then
         Dim i As Integer
-        For i = LBound(mLoggerConfig.excludedTags) To UBound(mLoggerConfig.excludedTags)
-            If mLoggerConfig.excludedTags(i) = tagType Then
+        For i = LBound(mLoggerConfig.ExcludedTags) To UBound(mLoggerConfig.ExcludedTags)
+            If mLoggerConfig.ExcludedTags(i) = tagType Then
                 ShouldWriteLog = False
                 Exit Function
             End If
@@ -173,6 +144,8 @@ End Sub
 
 ' 各 Writer を初期化
 Private Sub InitializeWriters()
+    If mWriters Is Nothing Then Exit Sub
+    
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
         writer.Initialize
@@ -181,6 +154,8 @@ End Sub
 
 ' 各Writerの終了処理
 Private Sub TerminateWriters()
+    If mWriters Is Nothing Then Exit Sub
+    
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
         writer.Terminate

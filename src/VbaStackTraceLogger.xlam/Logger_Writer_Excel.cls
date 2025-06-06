@@ -57,7 +57,7 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         .Cells(mCurrentRow, 1).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
         .Cells(mCurrentRow, 2).value = logInfo.TagName
 
-        If logInfo.isIncludeCallerInfo Then
+        If logInfo.IsIncludeCallerInfo Then
             If Len(logInfo.CallPath) > 0 Then
                 .Cells(mCurrentRow, 3).value = logInfo.CallPath
             ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then

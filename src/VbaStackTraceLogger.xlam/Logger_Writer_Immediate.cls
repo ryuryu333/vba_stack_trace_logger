@@ -18,7 +18,7 @@ End Sub
 Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
     Dim outputContext As String
     
-    If logInfo.isIncludeCallerInfo Then
+    If logInfo.IsIncludeCallerInfo Then
         If Len(logInfo.CallPath) > 0 Then
             outputContext = "[" & logInfo.CallPath & "]"
         ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then

@@ -2,13 +2,13 @@ Attribute VB_Name = "Logger_DataStruct"
 ' Logger_DataStruct.bas
 
 Public Type LoggerConfigStruct
-    isLoggingEnabled As Boolean
-    isTagFilteringEnabled  As Boolean
-    excludedTags() As LoggerLogTag
-    isIncludeCallerInfo As Boolean
-    isWriteToImmediate As Boolean
-    isWriteToExcelSheet As Boolean
-    outputExcelSheet As Worksheet
+    IsLoggingEnabled As Boolean
+    IsTagFilteringEnabled  As Boolean
+    ExcludedTags() As LoggerLogTag
+    IsIncludeCallerInfo As Boolean
+    IsWriteToImmediate As Boolean
+    IsWriteToExcelSheet As Boolean
+    OutputExcelSheet As Worksheet
 End Type
 
 Public Type LoggerLogInfoStruct
@@ -16,7 +16,7 @@ Public Type LoggerLogInfoStruct
     tagType As LoggerLogTag
     TagName As String
     Timestamp As String
-    isIncludeCallerInfo As Boolean
+    IsIncludeCallerInfo As Boolean
     ModuleName As String
     ProcedureName  As String
     CallPath As String
