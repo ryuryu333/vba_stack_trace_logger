@@ -1,5 +1,5 @@
-Attribute VB_Name = "Logger_Provider"
-' Logger_Provider.bas
+Attribute VB_Name = "Logger_EntryPoint"
+' Logger_EntryPoint.bas
 Option Explicit
 
 Public Function MyLogger() As Logger_Facade
