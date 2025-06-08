@@ -21,7 +21,7 @@ End Sub
 
 Public Function CreateTracer(ByVal currentModuleName As String, ByVal currentProcedureName As String, _
                              ByRef stackTraceManager As Logger_CallStackManager, _
-                             ByRef loggerFacade As Logger_Facade) As Logger_ProcedureTracer
+                             ByRef controller As Logger_Controller) As Logger_ProcedureTracer
     EnsureInitialized
     
     ' スタックトレース機能が有効な場合のみ、Logger_ProcedureTracer を返す
@@ -31,7 +31,7 @@ Public Function CreateTracer(ByVal currentModuleName As String, ByVal currentPro
     Dim tracer As Logger_ProcedureTracer
     If mIsStackTraceEnabled Then
         Set tracer = New Logger_ProcedureTracer
-        tracer.Initialize currentModuleName, currentProcedureName, stackTraceManager, loggerFacade
+        tracer.Initialize currentModuleName, currentProcedureName, stackTraceManager, controller
     Else
         Set tracer = Nothing
     End If

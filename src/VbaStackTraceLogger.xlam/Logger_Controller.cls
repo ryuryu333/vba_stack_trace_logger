@@ -12,30 +12,29 @@ Option Explicit
 Private Const CLASS_NAME As String = "Logger_Controller"
 
 Private mCallStackManager As Logger_CallStackManager
+Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
 Private mMetadataHelper As Logger_MetadataHelper
 Private mWriters As Collection
 Private mLoggerConfig As Logger_ConfigStruct
 Private mIsInitialized As Boolean
 
 Private Sub Class_Initialize()
+    Set mCallStackManager = New Logger_CallStackManager
+    Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
     Set mMetadataHelper = New Logger_MetadataHelper
     Set mWriters = New Collection
 End Sub
 
 ' === 初期化処理 ===
-Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct, ByRef sharedManager As Logger_CallStackManager)
+Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct)
     ' === 各引数を検証後、メンバ変数へ代入 ===
     ValidateConfig userConfig
     Set mLoggerConfig = userConfig
     
-    If sharedManager Is Nothing Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "CallStackManager のインスタンスが見つかりません"
-    End If
-    Set mCallStackManager = sharedManager
+    ' === ProcedureTracerProvider を初期化 ===
+    mProcedureTracerProvider.Initialize userConfig.IsStackTraceEnabled
     
-    ' === ユーザーの設定を元に Writers を作成 ===
+    ' === Writers を作成 ===
     ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
     ' イミディエイトウインドウ（VBE）
     If mLoggerConfig.IsWriteToImmediate Then
@@ -128,11 +127,26 @@ Private Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag) As Boolean
     End If
 End Function
 
+' === スタックトレース ===
+Public Function UsingTracer(ByVal currentModuleName As String, _
+                            ByVal currentProcName As String) As Logger_ProcedureTracer
+    EnsureInitialized
+    
+    ' Provider に Tracer の生成を依頼
+    Set UsingTracer = mProcedureTracerProvider.CreateTracer(currentModuleName, currentProcName, mCallStackManager, Me)
+End Function
+
+
 ' === 終了処理 ===
 Public Sub Terminate()
     EnsureInitialized
-    
+
     TerminateWriters
+    Set mWriters = Nothing
+    
+    Set mMetadataHelper = Nothing
+    Set mProcedureTracerProvider = Nothing
+    Set mCallStackManager = Nothing
 End Sub
 
 ' === Writer 関連の処理 ===
@@ -153,6 +167,7 @@ End Sub
 
 ' 各Writerの終了処理
 Private Sub TerminateWriters()
+    If mWriters Is Nothing Then Exit Sub
     If mWriters.Count = 0 Then Exit Sub
     
     Dim writer As Logger_ILogWriter
@@ -168,18 +183,13 @@ Private Sub EnsureInitialized()
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
             "Controller が初期化されていません"
     End If
-    
-    If mCallStackManager Is Nothing Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
-            "mStackTraceManager が見つかりません"
-    End If
 End Sub
 
 Private Sub Class_Terminate()
     ' フェイルセーフ
     TerminateWriters
     Set mCallStackManager = Nothing
+    Set mProcedureTracerProvider = Nothing
     Set mMetadataHelper = Nothing
     Set mWriters = Nothing
 End Sub

@@ -18,33 +18,33 @@ Private Const EXIT_MESSAG As String = "<< Exit "
 Private mCallSite As String
 
 Private mStackTraceManager As Logger_CallStackManager
-Private mLoggerFacade As Logger_Facade
+Private mController As Logger_Controller
 Private mIsInitialized As Boolean
 
 ' インスタンス化の後に初期化が指示される
 ' 引数付きコンストラクタの代わり
 Public Sub Initialize(ByVal currentModuleName As String, ByVal currentProcedureName As String, _
-                      ByRef stackTraceManager As Logger_CallStackManager, ByRef loggerFacade As Logger_Facade)
+                      ByRef stackTraceManager As Logger_CallStackManager, ByRef controller As Logger_Controller)
     If stackTraceManager Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
             "StackTraceManager のインスタンスが見つかりません"
     End If
-    If loggerFacade Is Nothing Then
+    If controller Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "Logger_Facade のインスタンスが見つかりません"
+            "controller のインスタンスが見つかりません"
     End If
     
     Set mStackTraceManager = stackTraceManager
-    Set mLoggerFacade = loggerFacade
+    Set mController = controller
     mCallSite = currentModuleName & "." & currentProcedureName
     
     ' コールスタック更新を指示
     mStackTraceManager.EnterProcedure (mCallSite)
     
     ' プロシージャ開始のログ出力を指示
-    mLoggerFacade.Log ENTER_MESSAG & mCallSite, LogTag_Trace
+    mController.WriteLog ENTER_MESSAG & mCallSite, LogTag_Trace
     
     mIsInitialized = True
 End Sub
@@ -58,14 +58,14 @@ Private Sub Class_Terminate()
     End If
     
     ' プロシージャ終了のログ出力を指示
-    mLoggerFacade.Log EXIT_MESSAG & mCallSite, LogTag_Trace
+    mController.WriteLog EXIT_MESSAG & mCallSite, LogTag_Trace
     
     ' コールスタック更新を指示
     mStackTraceManager.ExitProcedure
     
     ' リソース解放
     Set mStackTraceManager = Nothing
-    Set mLoggerFacade = Nothing
+    Set mController = Nothing
 End Sub
 
 

@@ -16,14 +16,10 @@ Option Explicit
 Private Const CLASS_NAME As String = "Logger_Facade"
 
 Private mController As Logger_Controller
-Private mSharedCallStackManager As Logger_CallStackManager ' Facade クラスにてインスタン化・解放、Controller と共有
-Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
 Private mIsInitialized As Boolean
 
 Private Sub Class_Initialize()
     Set mController = New Logger_Controller
-    Set mSharedCallStackManager = New Logger_CallStackManager
-    Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
 End Sub
 
 ' === ロガーの初期化を指示 ===
@@ -36,7 +32,7 @@ Public Function Initialize() As Logger_ConfigBuilder
             "ロガーはすでに初期化済みです、2回目の初期化は実行できません"
         Exit Function
     End If
-    
+
     ' ビルダーで初期化に用いる設定値を作成
     ' その後、CompleteInitialization に返ってくる
     Dim configBuilder As New Logger_ConfigBuilder
@@ -54,9 +50,8 @@ Public Sub CompleteInitialization(ByRef userConfig As Logger_ConfigStruct)
         Exit Sub
     End If
     
-    ' ユーザーが作成した設定値を用いて、各クラスを初期化
-    mController.Initialize userConfig, mSharedCallStackManager
-    mProcedureTracerProvider.Initialize userConfig.IsStackTraceEnabled
+    ' ユーザーが作成した設定値を用いて、Controller を初期化
+    mController.Initialize userConfig
     
     mIsInitialized = True
 End Sub
@@ -72,13 +67,8 @@ End Sub
 Public Sub Terminate()
     EnsureInitialized
     
-    ' Controller は SharedStackTraceManager を参照しているため
-    ' Controller の終了処理が終わった後に、SharedStackTraceManager を解放する
     mController.Terminate
-    Set mProcedureTracerProvider = Nothing
-    Set mSharedCallStackManager = Nothing
     Set mController = Nothing
-    
     
     mIsInitialized = False
 End Sub
@@ -91,8 +81,7 @@ Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
     
-    ' Provider に Tracer の生成を依頼
-    Set UsingTracer = mProcedureTracerProvider.CreateTracer(currentModuleName, currentProcName, mSharedCallStackManager, Me)
+    Set UsingTracer = mController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
 ' === utility 関数 ===
@@ -114,8 +103,6 @@ End Sub
 Private Sub Class_Terminate()
     ' フェイルセーフ
     Set mController = Nothing
-    Set mSharedCallStackManager = Nothing
-    Set mProcedureTracerProvider = Nothing
 End Sub
 
 
