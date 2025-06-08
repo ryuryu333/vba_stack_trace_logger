@@ -8,29 +8,64 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_ProcedureTracer.cls
+' RAII を模倣し、ライフサイクルと紐づけてスタックトレース情報の更新を実施
+' 変数として使用するクラス
 Option Explicit
+Private Const CLASS_NAME As String = "Logger_ProcedureTracer"
 
-Private mModuleName As String
-Private mProcedureName As String
-Private mPreviousCallPath As String
-Private mLogger As Logger_Facade
+Private Const ENTER_MESSAG As String = ">> Enter "
+Private Const EXIT_MESSAG As String = "<< Exit "
+Private mCallSite As String
 
-Public Sub Init(ByVal ModuleName As String, ByVal procName As String)
-    mModuleName = ModuleName
-    mProcedureName = procName
+Private mStackTraceManager As Logger_CallStackManager
+Private mLoggerFacade As Logger_Facade
+Private mIsInitialized As Boolean
 
-    Set mLogger = MyLogger
-    If Not mLogger Is Nothing Then
-        mPreviousCallPath = mLogger.EnterProcedureContext(mModuleName, mProcedureName)
-        mLogger.Log ">> Enter " & mProcedureName, LogTag_Trace
+' インスタンス化の後に初期化が指示される
+' 引数付きコンストラクタの代わり
+Public Sub Initialize(ByVal currentModuleName As String, ByVal currentProcedureName As String, _
+                      ByRef stackTraceManager As Logger_CallStackManager, ByRef loggerFacade As Logger_Facade)
+    If stackTraceManager Is Nothing Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
+            "StackTraceManager のインスタンスが見つかりません"
     End If
+    If loggerFacade Is Nothing Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
+            "Logger_Facade のインスタンスが見つかりません"
+    End If
+    
+    Set mStackTraceManager = stackTraceManager
+    Set mLoggerFacade = loggerFacade
+    mCallSite = currentModuleName & "." & currentProcedureName
+    
+    ' コールスタック更新を指示
+    mStackTraceManager.EnterProcedure (mCallSite)
+    
+    ' プロシージャ開始のログ出力を指示
+    mLoggerFacade.Log ENTER_MESSAG & mCallSite, LogTag_Trace
+    
+    mIsInitialized = True
 End Sub
 
+' デストラクタ
 Private Sub Class_Terminate()
-    On Error Resume Next
-    If Not mLogger Is Nothing Then
-        mLogger.Log "<< Exit  " & mProcedureName, LogTag_Trace
-        mLogger.ExitProcedureContext mPreviousCallPath
+    If mIsInitialized = False Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Class_Terminate", _
+            "初期化が未実施の状態で解放処理が呼ばれました"
     End If
+    
+    ' プロシージャ終了のログ出力を指示
+    mLoggerFacade.Log EXIT_MESSAG & mCallSite, LogTag_Trace
+    
+    ' コールスタック更新を指示
+    mStackTraceManager.ExitProcedure
+    
+    ' リソース解放
+    Set mStackTraceManager = Nothing
+    Set mLoggerFacade = Nothing
 End Sub
+
 

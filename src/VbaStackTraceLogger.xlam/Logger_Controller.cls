@@ -9,11 +9,13 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_Controller.cls
 Option Explicit
+Private Const CLASS_NAME As String = "Logger_Controller"
 
+Private mCallStackManager As Logger_CallStackManager
 Private mMetadataProvider As Logger_MetadataProvider
 Private mWriters As Collection
 Private mLoggerConfig As LoggerConfigStruct
-Private mCurrentCallPath As String
+Private mIsInitialized As Boolean
 
 Private Sub Class_Initialize()
     Set mMetadataProvider = New Logger_MetadataProvider
@@ -21,12 +23,19 @@ Private Sub Class_Initialize()
 End Sub
 
 ' === 初期化処理 ===
-Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
-    ' === ユーザーが入力したロガーの設定値が正常か判定、メンバ変数に代入 ===
+Public Sub Initialize(ByRef userConfig As LoggerConfigStruct, ByRef sharedManager As Logger_CallStackManager)
+    ' === 各引数を検証後、メンバ変数へ代入 ===
     ValidateConfig userConfig
     mLoggerConfig = userConfig
     
-    '  === Writers の作成 ===
+    If sharedManager Is Nothing Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
+            "CallStackManager のインスタンスが見つかりません"
+    End If
+    Set mCallStackManager = sharedManager
+    
+    ' === ユーザーの設定を元に Writers を作成 ===
     ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
     ' イミディエイトウインドウ（VBE）
     If mLoggerConfig.IsWriteToImmediate Then
@@ -40,8 +49,10 @@ Public Sub Initialize(ByRef userConfig As LoggerConfigStruct)
         AddWriter excelWriter
     End If
     
-    ' === Logger_ILogWriter の具象クラスの初期化を実施 ===
+    ' === Writers の初期化を実施 ===
     InitializeWriters
+    
+    mIsInitialized = True
 End Sub
 
 ' 動的検証を実行、静的検証は Logger_ConfigBuilder にて実施
@@ -54,8 +65,9 @@ Private Sub ValidateConfig(ByRef userConfig As LoggerConfigStruct)
         testValue = userConfig.OutputExcelSheet.Name
         If Err.Number <> 0 Then
             On Error GoTo 0
-            Err.Raise vbObjectError + 513, "Controller.ValidateConfig", _
-                      "指定されたエクセルシートにアクセスできません"
+            Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+                LOGGER_NAMESPACE & "." & CLASS_NAME & ".ValidateConfig", _
+                "指定されたエクセルシートにアクセスできません"
         End If
         On Error GoTo 0
     End If
@@ -63,21 +75,29 @@ End Sub
 
 ' === ログ出力 ===
 ' logInfo に情報を書き込んだ後、Writer に渡してログを出力させる
-Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
+Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As LoggerLogTag)
+    EnsureInitialized
+    
     ' === ロガーの設定を元に、ログ出力すべきかを判定 ===
-    If ShouldWriteLog(logInfo.tagType) = False Then Exit Sub
+    If ShouldWriteLog(userSelectedTag) = False Then Exit Sub
     
     ' === logInfo に情報を書き込む ===
+    Dim logInfo As LoggerLogInfoStruct
     With logInfo
+        .Message = writeMessage
+        .TagType = userSelectedTag
         .IsIncludeCallerInfo = mLoggerConfig.IsIncludeCallerInfo
-        .CallPath = IIf(.IsIncludeCallerInfo, mCurrentCallPath, "")
+        If .IsIncludeCallerInfo Then .CallPath = mCallStackManager.GetCurrentCallPath
     End With
     
     ' === logInfo のメタ情報を付与 ===
-    ' （TimeStamp、TagName、CallPath、ModuleName、ProcedureName）
+    ' 以下を計算して logInfo に書き込む
+    ' TimeStamp、TagName、ModuleName、ProcedureName
     mMetadataProvider.EnrichLogEntry logInfo
     
     ' === 各 Writer にログ出力を命令 ===
+    If mWriters Is Nothing Then Exit Sub
+    
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
         writer.WriteLog logInfo
@@ -85,16 +105,12 @@ Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
 End Sub
 
 ' ロガーの設定を元に、ログ出力すべきかを判定
-' Falseとなるパターンを順番に評価、どれにも当てはまらなければTrue
-Private Function ShouldWriteLog(tagType As LoggerLogTag) As Boolean
-    ' ログ出力が有効かを確認
-    If mLoggerConfig.IsLoggingEnabled Then
-        ShouldWriteLog = True
-        Exit Function
-    End If
+' False となるパターンを順番に評価、どれにも当てはまらなければTrue
+Private Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag) As Boolean
+    ShouldWriteLog = True
     
-    ' スタックトレース機能が無効の場合
-    If mLoggerConfig.IsIncludeCallerInfo = False And tagType = LogTag_Trace Then
+    ' ログ出力が無効の場合
+    If mLoggerConfig.IsLoggingEnabled = False Then
         ShouldWriteLog = False
         Exit Function
     End If
@@ -103,7 +119,7 @@ Private Function ShouldWriteLog(tagType As LoggerLogTag) As Boolean
     If mLoggerConfig.IsTagFilteringEnabled Then
         Dim i As Integer
         For i = LBound(mLoggerConfig.ExcludedTags) To UBound(mLoggerConfig.ExcludedTags)
-            If mLoggerConfig.ExcludedTags(i) = tagType Then
+            If selectedTag = mLoggerConfig.ExcludedTags(i) Then
                 ShouldWriteLog = False
                 Exit Function
             End If
@@ -111,28 +127,10 @@ Private Function ShouldWriteLog(tagType As LoggerLogTag) As Boolean
     End If
 End Function
 
-' === スタックトレースの呼び出し階層情報を更新 ===
-' 新しい関数が呼び出された際の処理
-Public Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
-    Dim newPathSegment As String
-    newPathSegment = currentModuleName & "." & currentProcName
-
-    ' 新しい関数を呼ばれた時点でのスタックトレース情報を返した後、情報を更新する
-    EnterProcedureContext = mCurrentCallPath
-    If Len(mCurrentCallPath) > 0 Then
-        mCurrentCallPath = newPathSegment & " < " & mCurrentCallPath
-    Else
-        mCurrentCallPath = newPathSegment
-    End If
-End Function
-
-' 関数が終了した際の処理
-Public Sub ExitProcedureContext(ByVal previousPath As String)
-    mCurrentCallPath = previousPath
-End Sub
-
 ' === 終了処理 ===
 Public Sub Terminate()
+    EnsureInitialized
+    
     TerminateWriters
 End Sub
 
@@ -144,7 +142,7 @@ End Sub
 
 ' 各 Writer を初期化
 Private Sub InitializeWriters()
-    If mWriters Is Nothing Then Exit Sub
+    If mWriters.count = 0 Then Exit Sub
     
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
@@ -154,7 +152,7 @@ End Sub
 
 ' 各Writerの終了処理
 Private Sub TerminateWriters()
-    If mWriters Is Nothing Then Exit Sub
+    If mWriters.count = 0 Then Exit Sub
     
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
@@ -162,5 +160,27 @@ Private Sub TerminateWriters()
     Next
 End Sub
 
+' 初期化済みか確認
+Private Sub EnsureInitialized()
+    If Not mIsInitialized Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
+            "Controller が初期化されていません"
+    End If
+    
+    If mCallStackManager Is Nothing Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
+            "mStackTraceManager が見つかりません"
+    End If
+End Sub
+
+Private Sub Class_Terminate()
+    ' フェイルセーフ
+    TerminateWriters
+    Set mCallStackManager = Nothing
+    Set mMetadataProvider = Nothing
+    Set mWriters = Nothing
+End Sub
 
 

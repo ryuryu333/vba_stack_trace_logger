@@ -13,77 +13,86 @@ Attribute VB_Exposed = False
 ' （実際の流れは Logger_Provider -> Logger_SingletonManager -> Logger_Facade）
 ' myLogger.Log の様に利用する
 Option Explicit
+Private Const CLASS_NAME As String = "Logger_Facade"
 
 Private mController As Logger_Controller
-Private mIsInitialized As Boolean ' VBA の仕様で bool 初期値は False になるので、宣言だけして初期化は未記載
+Private mSharedCallStackManager As Logger_CallStackManager ' Facade クラスにてインスタン化・解放、Controller と共有
+Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
+Private mIsInitialized As Boolean
 
-' コンストラクタ
 Private Sub Class_Initialize()
     Set mController = New Logger_Controller
+    Set mSharedCallStackManager = New Logger_CallStackManager
+    Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
 End Sub
 
-' === ロガーの初期化処理を指示 ===
+' === ロガーの初期化を指示 ===
+' User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
+' の順番で処理が実施される
 Public Function Initialize() As Logger_ConfigBuilder
     If mIsInitialized Then
-        Debug.Print "ロガーはすでに初期化されています、2回目の初期化は実行できません"
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
+            "ロガーはすでに初期化済みです、2回目の初期化は実行できません"
         Exit Function
     End If
     
     ' ビルダーで初期化に用いる設定値を作成
-    ' その後、Controller の初期化処理が呼び出される
+    ' その後、CompleteInitialization に返ってくる
     Dim configBuilder As New Logger_ConfigBuilder
-    configBuilder.SetLoggerController mController
+    configBuilder.Initialize Me
     Set Initialize = configBuilder
-    mIsInitialized = True
 End Function
 
-' ログ出力を指示
-Public Sub Log(Message As String, Optional tag As LoggerLogTag = LogTag_Info)
-    EnsureInitialized
-
-    Dim logInfo As LoggerLogInfoStruct
-    logInfo.Message = Message
-    logInfo.tagType = tag
-
-    mController.WriteLog logInfo
+' User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
+' の順番で処理が実施される
+Public Sub CompleteInitialization(ByRef config As LoggerConfigStruct)
+    If mIsInitialized Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
+            "ロガーはすでに初期化済みです、2回目の初期化は実行できません"
+        Exit Sub
+    End If
+    ' ユーザーが作成した設定値を用いて、各クラスを初期化
+    mController.Initialize config, mSharedCallStackManager
+    mProcedureTracerProvider.Initialize config.IsIncludeCallerInfo
+    
+    mIsInitialized = True
 End Sub
 
-' ロガーの終了処理を指示
+' === ログ出力を指示 ===
+Public Sub Log(ByVal writeMessage As String, Optional ByVal userSelectedTag As LoggerLogTag = LogTag_Info)
+    EnsureInitialized
+    
+    mController.WriteLog writeMessage, userSelectedTag
+End Sub
+
+' === ロガーの終了処理を指示 ===
 Public Sub Terminate()
     EnsureInitialized
     
+    ' Controller は SharedStackTraceManager を参照しているため
+    ' Controller の終了処理が終わった後に、SharedStackTraceManager を解放する
     mController.Terminate
+    Set mProcedureTracerProvider = Nothing
+    Set mSharedCallStackManager = Nothing
     Set mController = Nothing
+    
+    
     mIsInitialized = False
 End Sub
 
 ' === スタックトレース関連 ===
-' スタックトレース機能を利用する
-' Logger_ProcedureTracer のライフサイクルを利用しているので、インスタンスを返す
+' ProcedureTracerProvider > Create ProcedureTracer > User get ProcedureTracer instance
+' ユーザーが ProcedureTracer をプロシージャの冒頭で変数として保持、プロシージャの終了と同時に変数が破棄される
+' インスタンスのライフサイクルを利用して、プロシージャの開始・終了を検知し処理を実施
 Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
     
-    Dim tracer As New Logger_ProcedureTracer
-    tracer.Init currentModuleName, currentProcName
-    Set UsingTracer = tracer
+    ' Provider に Tracer の生成を依頼
+    Set UsingTracer = mProcedureTracerProvider.CreateTracer(currentModuleName, currentProcName, mSharedCallStackManager, Me)
 End Function
-
-' ユーザーが直接呼出し不可
-' Logger_ProcedureTracer 生成時に呼び出し
-Friend Function EnterProcedureContext(ByVal currentModuleName As String, ByVal currentProcName As String) As String
-    EnsureInitialized
-    
-    EnterProcedureContext = mController.EnterProcedureContext(currentModuleName, currentProcName)
-End Function
-
-' ユーザーが直接呼出し不可
-' Logger_ProcedureTracer 破棄時に呼び出し
-Friend Sub ExitProcedureContext(ByVal previousPath As String)
-    EnsureInitialized
-    
-    mController.ExitProcedureContext previousPath
-End Sub
 
 ' === utility 関数 ===
 ' Logger_SingletonManager の Logger_Facade インスタンスを破棄する
@@ -95,7 +104,17 @@ End Sub
 ' 初期化済みか確認
 Private Sub EnsureInitialized()
     If Not mIsInitialized Then
-        Err.Raise vbObjectError + 513, "Logger_Facade.Log", "ロガーが初期化されていません。先に Initialize を呼び出してください。"
-        Exit Sub
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
+            "ロガーが初期化されていません"
     End If
 End Sub
+
+Private Sub Class_Terminate()
+    ' フェイルセーフ
+    Set mController = Nothing
+    Set mSharedCallStackManager = Nothing
+    Set mProcedureTracerProvider = Nothing
+End Sub
+
+

@@ -12,7 +12,7 @@ Option Explicit
 Private Const CLASS_NAME As String = "ConfigBuilder"
 
 Private mConfig As LoggerConfigStruct
-Private mLoggerController As Logger_Controller
+Private mLoggerFacade As Logger_Facade
 Private mIsBuilt As Boolean
 
 ' ロガーの設定の初期値を指定
@@ -31,8 +31,8 @@ Private Sub Class_Initialize()
     mConfig = defaultConfig
 End Sub
 
-Friend Sub SetLoggerController(ByRef logger As Logger_Controller)
-    Set mLoggerController = logger
+Friend Sub Initialize(ByRef loggerFacade As Logger_Facade)
+    Set mLoggerFacade = loggerFacade
 End Sub
 
 Public Function DisableLogging() As Logger_ConfigBuilder
@@ -84,8 +84,8 @@ End Sub
 ' ロガーの設定用の値を確定、初期化処理を呼び出す
 Public Sub Build()
     Validate
-    If Not mLoggerController Is Nothing Then
-        mLoggerController.Initialize mConfig
+    If Not mLoggerFacade Is Nothing Then
+        mLoggerFacade.CompleteInitialization mConfig
     End If
     mIsBuilt = True
 End Sub
