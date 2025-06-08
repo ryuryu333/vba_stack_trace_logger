@@ -19,7 +19,7 @@ Public Sub SetTargetSheet(sheet As Worksheet)
     Set mOutputSheet = sheet
 End Sub
 
-Private Sub Logger_ILogWriter_Initialize()
+Public Sub Logger_ILogWriter_Initialize()
     If mOutputSheet Is Nothing Then
         MsgBox "Logger_ExcelWriter: 出力先のシートが設定されていません。", vbExclamation
         Exit Sub
@@ -49,7 +49,7 @@ Private Sub Logger_ILogWriter_Initialize()
     Debug.Print "エクセル用のロガーを初期化しました"
 End Sub
 
-Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
+Public Sub Logger_ILogWriter_WriteLog(logInfo As Logger_LogInfoStruct)
     If mOutputSheet Is Nothing Then Exit Sub
 
     With mOutputSheet
@@ -57,16 +57,14 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         .Cells(mCurrentRow, 1).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
         .Cells(mCurrentRow, 2).value = logInfo.TagName
 
-        If logInfo.IsIncludeCallerInfo Then
+        If logInfo.IsStackTraceEnabled Then
             If Len(logInfo.CallPath) > 0 Then
                 .Cells(mCurrentRow, 3).value = logInfo.CallPath
-            ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then
-                .Cells(mCurrentRow, 3).value = logInfo.ModuleName & "." & logInfo.ProcedureName
             Else
-                .Cells(mCurrentRow, 3).value = "" ' No specific caller info
+                .Cells(mCurrentRow, 3).value = ""
             End If
         Else
-            .Cells(mCurrentRow, 3).value = "" ' Caller info not requested
+            .Cells(mCurrentRow, 3).value = ""
         End If
 
         .Cells(mCurrentRow, 4).value = logInfo.Message ' Message now in column D
@@ -98,7 +96,7 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
     mCurrentRow = mCurrentRow + 1
 End Sub
 
-Private Sub Logger_ILogWriter_Terminate()
+Public Sub Logger_ILogWriter_Terminate()
     If Not mOutputSheet Is Nothing Then
         On Error Resume Next ' Handle cases where sheet might not be available
         mOutputSheet.Columns("A:D").AutoFit ' Adjusted range to column D

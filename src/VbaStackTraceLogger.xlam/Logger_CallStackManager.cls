@@ -74,8 +74,8 @@ End Function
 Private Sub ValidateCallStack()
     Dim isValid As Boolean: isValid = True
     If mCallNestLevel < 0 Then isValid = False
-    If mCallSite.count <> mCallNestLevel Then isValid = False
-    If mCallPath.count <> mCallNestLevel Then isValid = False
+    If mCallSite.Count <> mCallNestLevel Then isValid = False
+    If mCallPath.Count <> mCallNestLevel Then isValid = False
     
     If isValid = False Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _

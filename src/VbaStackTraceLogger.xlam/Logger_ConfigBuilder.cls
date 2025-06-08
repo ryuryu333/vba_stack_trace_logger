@@ -11,24 +11,30 @@ Attribute VB_Exposed = False
 Option Explicit
 Private Const CLASS_NAME As String = "ConfigBuilder"
 
-Private mConfig As LoggerConfigStruct
+Private mConfig As Logger_ConfigStruct
 Private mLoggerFacade As Logger_Facade
 Private mIsBuilt As Boolean
 
 ' ロガーの設定の初期値を指定
 ' 必要最低限な機能のみを有効化する設定にしている
 Private Sub Class_Initialize()
-    Dim defaultConfig As LoggerConfigStruct
+    Dim defaultConfig As Logger_ConfigStruct
+    Set defaultConfig = New Logger_ConfigStruct
     With defaultConfig
         .IsLoggingEnabled = True
         .IsTagFilteringEnabled = False
-        ' Enum の配列である ExcludedTags は defaultConfig 宣言時点で空配列が代入されている
-        .IsIncludeCallerInfo = False
+        .IsStackTraceEnabled = False
         .IsWriteToImmediate = True
         .IsWriteToExcelSheet = False
         Set .OutputExcelSheet = Nothing
     End With
-    mConfig = defaultConfig
+    
+    Dim tmpExcludedTags() As LoggerLogTag
+    tmpExcludedTags = defaultConfig.ExcludedTags
+    ReDim tmpExcludedTags(0)
+    defaultConfig.ExcludedTags = tmpExcludedTags
+    
+    Set mConfig = defaultConfig
 End Sub
 
 Friend Sub Initialize(ByRef loggerFacade As Logger_Facade)
@@ -44,20 +50,23 @@ End Function
 Public Function EnableTagFiltering() As Logger_TagFilterBuilder
     ' IsLoggingEnabled の初期値は False
     mConfig.IsTagFilteringEnabled = True
-    ' サブビルダーへ連鎖させる
+    ' サブビルダーへ連鎖させ、ExcludedTags の設定を強制する
+    ' SetExcludedTags した後は、Logger_ConfigBuilder の連鎖に返ってくる
     Dim nextStep As New Logger_TagFilterBuilder
     nextStep.SetParentBuilder Me
     Set EnableTagFiltering = nextStep
 End Function
 
-' サブビルダー Logger_TagArrayBuilder からここへ連鎖する
+' サブビルダー Logger_TagArrayBuilder により呼び出される
 Friend Sub SetExcludedTags(ByRef tags() As LoggerLogTag)
-    Set mConfig.ExcludedTags = tags
+    Dim createdArray() As LoggerLogTag
+    createdArray = tags
+    mConfig.ExcludedTags = createdArray
 End Sub
 
 Public Function EnableStackTrace() As Logger_ConfigBuilder
-    ' IsIncludeCallerInfo の初期値は False
-    mConfig.IsIncludeCallerInfo = True
+    ' IsStackTraceEnabled の初期値は False
+    mConfig.IsStackTraceEnabled = True
     Set EnableStackTrace = Me
 End Function
 

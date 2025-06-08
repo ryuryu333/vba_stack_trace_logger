@@ -12,21 +12,21 @@ Option Explicit
 Private Const CLASS_NAME As String = "Logger_Controller"
 
 Private mCallStackManager As Logger_CallStackManager
-Private mMetadataProvider As Logger_MetadataProvider
+Private mMetadataHelper As Logger_MetadataHelper
 Private mWriters As Collection
-Private mLoggerConfig As LoggerConfigStruct
+Private mLoggerConfig As Logger_ConfigStruct
 Private mIsInitialized As Boolean
 
 Private Sub Class_Initialize()
-    Set mMetadataProvider = New Logger_MetadataProvider
+    Set mMetadataHelper = New Logger_MetadataHelper
     Set mWriters = New Collection
 End Sub
 
 ' === 初期化処理 ===
-Public Sub Initialize(ByRef userConfig As LoggerConfigStruct, ByRef sharedManager As Logger_CallStackManager)
+Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct, ByRef sharedManager As Logger_CallStackManager)
     ' === 各引数を検証後、メンバ変数へ代入 ===
     ValidateConfig userConfig
-    mLoggerConfig = userConfig
+    Set mLoggerConfig = userConfig
     
     If sharedManager Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
@@ -56,7 +56,7 @@ Public Sub Initialize(ByRef userConfig As LoggerConfigStruct, ByRef sharedManage
 End Sub
 
 ' 動的検証を実行、静的検証は Logger_ConfigBuilder にて実施
-Private Sub ValidateConfig(ByRef userConfig As LoggerConfigStruct)
+Private Sub ValidateConfig(ByRef userConfig As Logger_ConfigStruct)
     ' Excel出力設定の検証
     If userConfig.IsWriteToExcelSheet Then
         ' エクセルシートにアクセスし、参照可能な状態かを確認
@@ -82,18 +82,16 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
     If ShouldWriteLog(userSelectedTag) = False Then Exit Sub
     
     ' === logInfo に情報を書き込む ===
-    Dim logInfo As LoggerLogInfoStruct
+    Dim logInfo As Logger_LogInfoStruct
+    Set logInfo = New Logger_LogInfoStruct
     With logInfo
         .Message = writeMessage
         .TagType = userSelectedTag
-        .IsIncludeCallerInfo = mLoggerConfig.IsIncludeCallerInfo
-        If .IsIncludeCallerInfo Then .CallPath = mCallStackManager.GetCurrentCallPath
+        .TagName = mMetadataHelper.GetTagName(.TagType)
+        .Timestamp = mMetadataHelper.GetTimeStamp
+        .IsStackTraceEnabled = mLoggerConfig.IsStackTraceEnabled
+        If .IsStackTraceEnabled Then .CallPath = mCallStackManager.GetCurrentCallPath
     End With
-    
-    ' === logInfo のメタ情報を付与 ===
-    ' 以下を計算して logInfo に書き込む
-    ' TimeStamp、TagName、ModuleName、ProcedureName
-    mMetadataProvider.EnrichLogEntry logInfo
     
     ' === 各 Writer にログ出力を命令 ===
     If mWriters Is Nothing Then Exit Sub
@@ -117,9 +115,12 @@ Private Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag) As Boolean
     
     ' 特定のタグのログ出力が無効の場合
     If mLoggerConfig.IsTagFilteringEnabled Then
+        Dim userDefinedExcludedTags() As LoggerLogTag
+        userDefinedExcludedTags = mLoggerConfig.ExcludedTags
+        ' ユーザー設定された除外ログと一致するか確認
         Dim i As Integer
-        For i = LBound(mLoggerConfig.ExcludedTags) To UBound(mLoggerConfig.ExcludedTags)
-            If selectedTag = mLoggerConfig.ExcludedTags(i) Then
+        For i = LBound(userDefinedExcludedTags) To UBound(userDefinedExcludedTags)
+            If selectedTag = userDefinedExcludedTags(i) Then
                 ShouldWriteLog = False
                 Exit Function
             End If
@@ -142,7 +143,7 @@ End Sub
 
 ' 各 Writer を初期化
 Private Sub InitializeWriters()
-    If mWriters.count = 0 Then Exit Sub
+    If mWriters.Count = 0 Then Exit Sub
     
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
@@ -152,7 +153,7 @@ End Sub
 
 ' 各Writerの終了処理
 Private Sub TerminateWriters()
-    If mWriters.count = 0 Then Exit Sub
+    If mWriters.Count = 0 Then Exit Sub
     
     Dim writer As Logger_ILogWriter
     For Each writer In mWriters
@@ -179,7 +180,7 @@ Private Sub Class_Terminate()
     ' フェイルセーフ
     TerminateWriters
     Set mCallStackManager = Nothing
-    Set mMetadataProvider = Nothing
+    Set mMetadataHelper = Nothing
     Set mWriters = Nothing
 End Sub
 

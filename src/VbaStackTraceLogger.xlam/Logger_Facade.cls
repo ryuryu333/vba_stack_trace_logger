@@ -46,24 +46,25 @@ End Function
 
 ' User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
 ' の順番で処理が実施される
-Public Sub CompleteInitialization(ByRef config As LoggerConfigStruct)
+Public Sub CompleteInitialization(ByRef userConfig As Logger_ConfigStruct)
     If mIsInitialized Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
             "ロガーはすでに初期化済みです、2回目の初期化は実行できません"
         Exit Sub
     End If
+    
     ' ユーザーが作成した設定値を用いて、各クラスを初期化
-    mController.Initialize config, mSharedCallStackManager
-    mProcedureTracerProvider.Initialize config.IsIncludeCallerInfo
+    mController.Initialize userConfig, mSharedCallStackManager
+    mProcedureTracerProvider.Initialize userConfig.IsStackTraceEnabled
     
     mIsInitialized = True
 End Sub
 
 ' === ログ出力を指示 ===
-Public Sub Log(ByVal writeMessage As String, Optional ByVal userSelectedTag As LoggerLogTag = LogTag_Info)
+Public Sub Log(ByVal writeMessage As String, Optional ByVal userSelectedTag As LoggerLogTag = LoggerLogTag.LogTag_Info)
     EnsureInitialized
-    
+
     mController.WriteLog writeMessage, userSelectedTag
 End Sub
 

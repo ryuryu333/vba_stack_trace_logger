@@ -14,8 +14,8 @@ Private Const CLASS_NAME As String = "Logger_ProcedureTracerProvider"
 Private mIsStackTraceEnabled As Boolean
 Private mIsInitialized As Boolean
 
-Public Sub Initialize(ByVal isStackTraceEnabled As Boolean)
-    mIsStackTraceEnabled = isStackTraceEnabled
+Public Sub Initialize(ByVal IsStackTraceEnabled As Boolean)
+    mIsStackTraceEnabled = IsStackTraceEnabled
     mIsInitialized = True
 End Sub
 

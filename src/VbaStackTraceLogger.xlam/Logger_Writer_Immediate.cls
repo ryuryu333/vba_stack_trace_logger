@@ -15,15 +15,12 @@ Private Sub Logger_ILogWriter_Initialize()
     Debug.Print "イミディエイトウィンドウ用のロガーを初期化しました"
 End Sub
 
-Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
+Private Sub Logger_ILogWriter_WriteLog(logInfo As Logger_LogInfoStruct)
     Dim outputContext As String
     
-    If logInfo.IsIncludeCallerInfo Then
+    If logInfo.IsStackTraceEnabled Then
         If Len(logInfo.CallPath) > 0 Then
             outputContext = "[" & logInfo.CallPath & "]"
-        ElseIf Len(logInfo.ModuleName) > 0 And Len(logInfo.ProcedureName) > 0 Then
-            ' Fallback for direct Log calls if CallPath is empty but caller info is requested
-            outputContext = "[" & logInfo.ModuleName & "." & logInfo.ProcedureName & "]"
         Else
             outputContext = ""
         End If

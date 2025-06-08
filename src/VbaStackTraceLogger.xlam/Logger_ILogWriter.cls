@@ -13,7 +13,7 @@ Option Explicit
 Public Sub Initialize()
 End Sub
 
-Public Sub WriteLog(logInfo As LoggerLogInfoStruct)
+Public Sub WriteLog(logInfo As Logger_LogInfoStruct)
 End Sub
 
 Public Sub Terminate()
