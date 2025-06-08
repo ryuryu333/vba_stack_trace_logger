@@ -1,116 +1,116 @@
-@startuml クラス図
-title VBA Logger Class Diagram (Dependencies)
+@startuml Class Diagram
+title VBA Stack Trace Logger Class Diagram
 
-package UserInterface {
-    class Logger_SingletonManager << (M,66CCFF) Module >> #LightBlue ##black {
-        - mLogger As Logger_Facade
-        + NewMyLogger() : Logger_Facade
-        + MyLogger() : Logger_Facade
-        + ReleaseMyLogger()
-    }
-    note top of Logger_SingletonManager
-        **NewMyLogger.Initialize(LoggerConfigStruct)**
-        
-        インスタンスを作成し、mLogger に保管、mLogger をユーザーに渡す
-        LoggerConfigStruct を引数にして初期化処理を呼ぶ
-
-        **MyLogger.Log("LogMessage", LoggerLogTag.Warning)**
-
-        mLogger をユーザーに渡す
-        常に同じ初期化済みの Logger_Facade インスタンスを提供する
-        Logger_Facade のメソッドを呼び出してログ出力を指示する
-    end note
-
-    class Logger_TracerHelper << (M,66CCFF) Module >> #LightBlue ##black {
-        + UsingTracer(ModuleName, ProcName) : Logger_ProcedureTracer
-    }
-    note top of Logger_TracerHelper
-        **Dim scopeGuard = UsingTracer("ModuleName", "ProcName")**
-        
-        関数のローカル変数として Logger_ProcedureTracer のインスタンスを作成する
-        関数が終了すると、Logger_ProcedureTracer が解放され、終了処理が行われる
-        初期化処理と終了処理にてコールスタック情報を更新する
-        その際、Logger_Facade.Log() を呼び出しログ出力も行う
-    end note
-
+' User use logger through Logger_EntryPoint.MyLogger
+' e.g. MyLogger.Log "Message"
+class Logger_EntryPoint << (M,66CCFF) Module >> #LightBlue ##black {
+    + MyLogger() : Logger_Facade
 }
 
+class Logger_SingletonManager << (M,66CCFF) Module >> {
+    - mLogger : Logger_Facade
+}
+
+' Logger API
 class Logger_Facade {
-    + Initialize(LoggerConfigStruct)
-    + Log(LogMessage, LoggerLogTag)
+    + Initialize()
+    + Log()
+    + UsingTracer()
     + Terminate()
-    ~ EnterProcedure()
-    ~ ExitProcedure()
+    + Reset()
 }
-note right of Logger_Facade
-    EnterProcedure()、ExitProcedure()
-    のアクセスレベルは Friend
-    ユーザーは直接呼び出せない
-    Logger_TracerHelper を通じて間接的に呼び出される
-end note
 
+Logger_EntryPoint -> Logger_SingletonManager : get Facade
+Logger_SingletonManager --> Logger_Facade : instantinate
 
+' Logger main logic
+' e.g. "Logger_Facade.log" call "Logger_Controller.WriteLog"
 class Logger_Controller {
-    - Collection of Logger_ILogWriter
-    + Initialize()
-    + WriteLog(LoggerLogInfoStruct)
-    + EnterProcedureContext()
-    + ExitProcedureContext()
-    + TerminateWriters()
+    - Initialize()
+    - WriteLog()
+    - Terminate()
 }
 
-interface Logger_ILogWriter {
-    + Initialize()
-    + WriteLog(LoggerLogInfoStruct)
-    + Terminate()
+Logger_Facade ---> Logger_Controller : uses
+
+' User initialize logger through Logger_Facade.Initialize
+' Setting values are defined through builders
+' e.g. MyLogger.Initialize.EnabledStckTrace.Build
+package "Config Builders" {
+    ' Main builder
+    class Logger_ConfigBuilder {
+    }
+    ' Sub builders
+    ' When user call "Logger_ConfigBuilder.EnableWriteToExcelSheet",
+    ' next chain is only "Logger_ExcelOutputBuilder.SetOutputExcelSheet"
+    class Logger_ExcelOutputBuilder {
+    }
+    class Logger_TagFilterBuilder {
+    }
 }
 
-class Logger_MetadataProvider {
-    + EnrichLogEntry(LoggerLogInfoStruct)
-    - GetTimestamp()
-    - GetTagName()
-    - GetCallerInfo()
+Logger_Facade::Initialize ----> Logger_ConfigBuilder : set config \n via builder \n method chain \n finally retrun Facade
+
+Logger_ConfigBuilder --> Logger_ExcelOutputBuilder : set enabled
+Logger_ExcelOutputBuilder --> Logger_ExcelOutputBuilder : set output sheet
+Logger_ExcelOutputBuilder --> Logger_ConfigBuilder : return main builder
+
+Logger_ConfigBuilder --> Logger_TagFilterBuilder : set enabled
+Logger_TagFilterBuilder --> Logger_TagFilterBuilder : set filter tags
+Logger_TagFilterBuilder --> Logger_ConfigBuilder : return main builder
+
+' Enrich log data with metadata
+class Logger_MetadataHelper {
 }
 
-class Logger_ProcedureTracer {
-    + Init(ModuleName, ProcName)
-    + Class_Terminate()
-}
-note right of Logger_ProcedureTracer
-    EnterProcedure()、ExitProcedure()
-    のアクセスレベルは Friend
-    ユーザーは直接呼び出せない
-    Logger_TracerHelper を通じて間接的に呼び出される
-end note
+Logger_Controller --> Logger_MetadataHelper : enrich log data
 
+' Strategy pattern
+class Logger_ILogWriter {
+}
 package "Log Writers" {
     class Logger_Writer_Excel {
     }
-
     class Logger_Writer_Immediate {
     }
 }
 
-package "Data Structures (Type / Enum)" {
-    struct LoggerConfigStruct << (T,FFFFCC) Type >>
-    struct LoggerLogInfoStruct << (T,FFFFCC) Type >>
-    enum LoggerLogTag
+Logger_Controller --> Logger_ILogWriter : send log data
+Logger_ILogWriter <|.. Logger_Writer_Excel
+Logger_ILogWriter <|.. Logger_Writer_Immediate
+
+package "StackTrace" {
+    ' Manages call stack information
+    class Logger_CallStackManager {
+    }
+    ' Trace procedure start/end, and call methods
+    ' Like RAII, catch start via constructor, end via destructor
+    ' User instance this class in procedure first scope
+    ' e.g. Dim scopeGuard = MyLogger.UsingTracer("ModuleName", "ProcedureName")
+    class Logger_ProcedureTracer {
+    }
+    ' Provides procedure tracer instance
+    class Logger_ProcedureTracerProvider {
+    }
+
+    Logger_Facade --> Logger_CallStackManager : create
+    Logger_Facade::UsingTracer ----> Logger_ProcedureTracerProvider : get traccer
+    Logger_ProcedureTracerProvider --> Logger_ProcedureTracer : create
+    Logger_ProcedureTracer --> Logger_CallStackManager : update call stack
+    Logger_ProcedureTracer --> Logger_Facade::Log : call log \n proc start/end
+    Logger_Controller --> Logger_CallStackManager : get call stack
 }
 
-' --- Relationships ---
-' Core Component Dependencies
-Logger_SingletonManager --> Logger_Facade : uses >
-Logger_Facade --> Logger_Controller : uses >
-Logger_Controller -right-> Logger_MetadataProvider : uses >
-
-Logger_Controller o-left-> "*" Logger_ILogWriter : holds collection \n uses <
-Logger_ILogWriter <|.up. Logger_Writer_Excel
-
-' Call Stack Tracing Dependencies
-Logger_ProcedureTracer --> Logger_Facade : uses >
-Logger_TracerHelper --> Logger_ProcedureTracer : uses >
-
-Logger_Controller -[hidden]-> LoggerConfigStruct
-Logger_Writer_Immediate -[hidden]-> Logger_Writer_Excel
+remove @unlinked
+'===  hidden classes ===
+class Logger_LogInfoStruct {
+}
+class Logger_ConfigStruct {
+}
+class Logger_DataStruct << (M,66CCFF) Module >> #LightBlue ##black{
+    + LoggerLogTag : Enum
+}
+class Logger_Constants {
+}
 
 @enduml
