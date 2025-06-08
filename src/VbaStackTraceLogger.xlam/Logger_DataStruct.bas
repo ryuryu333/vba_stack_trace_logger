@@ -13,7 +13,7 @@ End Type
 
 Public Type LoggerLogInfoStruct
     Message As String
-    tagType As LoggerLogTag
+    TagType As LoggerLogTag
     TagName As String
     Timestamp As String
     IsIncludeCallerInfo As Boolean

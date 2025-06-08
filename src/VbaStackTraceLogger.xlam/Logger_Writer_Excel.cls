@@ -80,7 +80,7 @@ Private Sub Logger_ILogWriter_WriteLog(logInfo As LoggerLogInfoStruct)
         
         ' 背景色の適用
         Dim bgColor As Long
-        Select Case logInfo.tagType
+        Select Case logInfo.TagType
             Case LogTag_Warning
                 bgColor = RGB(255, 255, 153)  ' 薄い黄色
             Case LogTag_Error, LogTag_Critical
