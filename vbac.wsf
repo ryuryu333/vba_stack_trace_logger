@@ -6,6 +6,37 @@ Instead, this unsophisticated script frees VBA code from binary files.
 This script is distributed as part of the Ariawase library.
 
 The Project Page: https://github.com/vbaidiot/Ariawase
+
+=== ORIGINAL LICENSE NOTICE ===
+Copyright (c) 2011 igeta
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+=== MODIFICATIONS ===
+Modified by: ryuryu333
+Date: 2025-06-09
+Changes: Added @Folder annotation support for organized directory structure in decombine operation
+- Added parseFolderAnnotation() method to parse @Folder("path") annotations
+- Added createDirectoryRecursive() method for directory creation
+- Modified exportSource() methods in both Office and Access prototypes
+- Supports dot-separated folder paths (e.g., "VbaStackTraceLogger.Core" -> "VbaStackTraceLogger\Core")
+
 </comment>
 <job id="">
 <?job error="true" debug="false" ?>
@@ -432,6 +463,59 @@ Office.prototype.importProject = function(impdir, vbproj, is64BitOffice) {
         println("- Import: " + proj.fileName);
     }
 };
+// === MODIFICATION START (2025-06-09 by ryuryu333) ===
+// Added @Folder annotation parsing functionality for organized directory structure
+Office.prototype.parseFolderAnnotation = function(codeModule) {
+    // @Folder アノテーションを解析して、フォルダパスを返す
+    // 見つからない場合や無効な場合は空文字を返す
+    
+    if (!codeModule || codeModule.CountOfLines < 2) {
+        return "";
+    }
+      // 先頭数行をチェック（通常は2行目あたりにある）
+    for (var i = 1; i <= Math.min(5, codeModule.CountOfLines); i++) {
+        var line = codeModule.Lines(i, 1);
+        // 手動でtrimを実装（古いJavaScriptエンジンのため）
+        line = line.replace(/^\s+|\s+$/g, "");
+        
+        // @Folder アノテーションの正規表現パターン
+        var folderMatch = line.match(/^'@Folder\s*\(\s*"([^"]*)"\s*\)/i);
+        if (folderMatch) {
+            var folderPath = folderMatch[1];
+            
+            // 空文字の場合はそのまま返す
+            if (folderPath === "") {
+                return "";
+            }
+            
+            // ドット区切りをスラッシュ区切りに変換
+            folderPath = folderPath.replace(/\./g, "\\");
+            
+            // 無効な文字をチェック（Windows ファイルシステムで使用できない文字）
+            var invalidChars = /[<>:"|?*]/;
+            if (invalidChars.test(folderPath)) {
+                println("  Warning: Invalid characters in @Folder annotation, using default location");
+                return "";
+            }
+            
+            return folderPath;
+        }
+    }    return "";
+};
+// Added recursive directory creation functionality
+Office.prototype.createDirectoryRecursive = function(dirPath) {
+    // ディレクトリを再帰的に作成
+    if (fso.FolderExists(dirPath)) {
+        return;
+    }
+    
+    var parentDir = fso.GetParentFolderName(dirPath);
+    if (parentDir !== "" && !fso.FolderExists(parentDir)) {
+        this.createDirectoryRecursive(parentDir);
+    }
+      fso.CreateFolder(dirPath);
+};
+// Modified exportSource to support @Folder annotation-based directory structure
 Office.prototype.exportSource = function(ofDoc, expdir) {
     var self = this;
     foreachEnum(ofDoc.VBProject.VBComponents, function(compo) {
@@ -442,13 +526,30 @@ Office.prototype.exportSource = function(ofDoc, expdir) {
         
         var xname = self.typeExtensionTable[compo.Type.toString()];
         var bname = compo.Name;
-        var fname = bname + "." + xname;
-        compo.Export(fso.BuildPath(expdir, fname));
+        var fname = bname + "." + xname;        
+        // @Folder アノテーションを解析
+        var folderPath = self.parseFolderAnnotation(compo.CodeModule);
+        var targetDir = expdir;
         
-        println("- Export: " + fname);
-        if (xname == 'frm') println("- Export: " + bname + ".frx");
+        if (folderPath !== "") {
+            targetDir = fso.BuildPath(expdir, folderPath);
+            
+            // ディレクトリが存在しない場合は作成
+            if (!fso.FolderExists(targetDir)) {
+                self.createDirectoryRecursive(targetDir);
+            }
+        }
+        
+        var fullPath = fso.BuildPath(targetDir, fname);
+        compo.Export(fullPath);
+        
+        // 相対パスを表示用に作成
+        var relativePath = folderPath === "" ? fname : fso.BuildPath(folderPath, fname);
+        println("- Export: " + relativePath);
+        if (xname == 'frm') println("- Export: " + (folderPath === "" ? bname + ".frx" : fso.BuildPath(folderPath, bname + ".frx")));
     });
 };
+// === MODIFICATION END ===
 Office.prototype.exportProject = function(vbproj, expdir) {
     var proj = new VBAProjFile(vbproj, expdir)
     proj.write();
@@ -874,15 +975,34 @@ Access.prototype.exportSource = function(acProj, expdir) {
             default: break;
             }
         }
+          var fname = bname + "." + xname;
+        var targetDir = expdir;
         
-        var fname = bname + "." + xname;
-        var path  = fso.BuildPath(expdir, fname);
+        // === MODIFICATION (2025-06-09 by ryuryu333) ===
+        // VBAモジュールの場合のみ @Folder アノテーションを処理
+        if (obj.Type == acModule) {
+            var folderPath = self.parseFolderAnnotation(compos.item(bname).CodeModule);
+            if (folderPath !== "") {
+                targetDir = fso.BuildPath(expdir, folderPath);
+                
+                // ディレクトリが存在しない場合は作成
+                if (!fso.FolderExists(targetDir)) {
+                    self.createDirectoryRecursive(targetDir);
+                }
+            }
+        }
+        // === END MODIFICATION ===
+        
+        var path = fso.BuildPath(targetDir, fname);
         if (obj.Type == acModule)
             compos(obj.Name).Export(path);
         else
             acApp.SaveAsText(obj.Type, bname, path);
         
-        println("- Export: " + fname);
+        // 相対パスを表示用に作成
+        var relativePath = (obj.Type == acModule && targetDir !== expdir) ? 
+            fso.BuildPath(fso.GetFileName(targetDir), fname) : fname;
+        println("- Export: " + relativePath);
     });
 };
 Access.prototype.compact = function(dbPath, acApp) {
