@@ -31,10 +31,14 @@ OTHER DEALINGS IN THE SOFTWARE.
 === MODIFICATIONS ===
 Modified by: ryuryu333
 Date: 2025-06-09
-Changes: Added @Folder annotation support for organized directory structure in decombine operation
+Changes: Added @Folder annotation support and hierarchical file operations for both decombine and combine operations
 - Added parseFolderAnnotation() method to parse @Folder("path") annotations
 - Added createDirectoryRecursive() method for directory creation
-- Modified exportSource() methods in both Office and Access prototypes
+- Added getFilesRecursively() method for recursive file search in combine operations
+- Added removeEmptyFolders() method for cleanup after file operations
+- Modified exportSource() methods in both Office and Access prototypes (decombine)
+- Modified importSource() methods in both Office and Access prototypes (combine)
+- Modified cleanupSource() methods to use recursive file operations
 - Supports dot-separated folder paths (e.g., "VbaStackTraceLogger.Core" -> "VbaStackTraceLogger\Core")
 
 </comment>
@@ -413,9 +417,11 @@ Office.prototype.cleanupBinary = function(ofDoc, verbose) {
         else {
             compos.Remove(compo);
         }
-        if (!!verbose) println("- Remove: " + bname);
-    });
+        if (!!verbose) println("- Remove: " + bname);    });
 };
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Modified cleanupSource to use recursive file operations for thorough cleanup
+// Now uses getFilesRecursively and removeEmptyFolders to handle hierarchical structures
 Office.prototype.cleanupSource = function(dir, verbose) {
     if (!fso.FolderExists(dir)) {
          fso.CreateFolder(dir);
@@ -423,14 +429,21 @@ Office.prototype.cleanupSource = function(dir, verbose) {
     }
     
     var self = this;
-    foreachEnum(fso.GetFolder(dir).Files, function(fl) {
+    // 再帰的にファイルを検索して削除
+    var allFiles = this.getFilesRecursively(dir);
+    
+    for (var i = 0; i < allFiles.length; i++) {
+        var fl = allFiles[i];
         var fname = fso.GetFileName(fl.Path);
         var xname = fso.GetExtensionName(fl.Path);
-        if (!(xname in self.extensionTypeTable)) return false;
+        if (!(xname in self.extensionTypeTable)) continue;
         
         fl.Delete();
         if (!!verbose) println("- Remove: " + fname);
-    });
+    }
+    
+    // 空のフォルダも削除（フォルダ階層をクリーンアップ）
+    this.removeEmptyFolders(dir);
 };
 Office.prototype.importComponent = function(path, ofDoc) {
     var compos = ofDoc.VBProject.VBComponents;
@@ -439,22 +452,53 @@ Office.prototype.importComponent = function(path, ofDoc) {
 Office.prototype.importDocument = function(path, ofDoc) {
     throw "Not Implemented";
 };
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Added recursive file search functionality for combine operations
+// This method recursively searches through all subfolders to find files,
+// enabling proper handling of hierarchical folder structures during combine
+Office.prototype.getFilesRecursively = function(folderPath, fileList) {
+    if (!fileList) fileList = [];
+    
+    if (!fso.FolderExists(folderPath)) return fileList;
+    
+    var folder = fso.GetFolder(folderPath);
+    var self = this;
+    
+    // 現在のフォルダ内のファイルを追加
+    foreachEnum(folder.Files, function(file) {
+        fileList.push(file);
+    });
+    
+    // サブフォルダを再帰的に検索
+    foreachEnum(folder.SubFolders, function(subFolder) {
+        self.getFilesRecursively(subFolder.Path, fileList);
+    });
+      return fileList;
+};
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Modified importSource to support hierarchical folder structures during combine operations
+// Now uses getFilesRecursively to find all files in nested folder structures
 Office.prototype.importSource = function(impdir, ofDoc) {
     var self = this;
-    foreachEnum(fso.GetFolder(impdir).Files, function(fl) {
+    var allFiles = this.getFilesRecursively(impdir);
+    
+    for (var i = 0; i < allFiles.length; i++) {
+        var fl = allFiles[i];
         var xname = fso.GetExtensionName(fl.Path);
         var bname = fso.GetBaseName(fl.Path);
-        if (!(xname in self.extensionTypeTable)) return false;
-        if (xname == 'frx') return false;
+        if (!(xname in self.extensionTypeTable)) continue;
+        if (xname == 'frx') continue;
         
         if (xname != 'dcm')
             self.importComponent(fl.Path, ofDoc);
         else
             self.importDocument(fl.Path, ofDoc);
         
-        println("- Import: " + fso.GetFileName(fl.Path));
-        if (xname == 'frm') println("- Import: " + bname + ".frx");
-    });
+        // 相対パスを表示用に作成
+        var relativePath = fl.Path.replace(impdir, "").replace(/^\\/, "");
+        println("- Import: " + (relativePath || fso.GetFileName(fl.Path)));
+        if (xname == 'frm') println("- Import: " + (relativePath ? fso.GetParentFolderName(relativePath) + "\\" + bname + ".frx" : bname + ".frx"));
+    }
 };
 Office.prototype.importProject = function(impdir, vbproj, is64BitOffice) {
     var proj = new VBAProjFile(vbproj, impdir);
@@ -502,7 +546,10 @@ Office.prototype.parseFolderAnnotation = function(codeModule) {
         }
     }    return "";
 };
-// Added recursive directory creation functionality
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Added recursive directory creation functionality for hierarchical folder structures
+// This method creates nested directories required for @Folder annotation-based organization
+// Enables deep folder structures during decombine operations (e.g., "VbaStackTraceLogger\Core\Utilities")
 Office.prototype.createDirectoryRecursive = function(dirPath) {
     // ディレクトリを再帰的に作成
     if (fso.FolderExists(dirPath)) {
@@ -513,7 +560,29 @@ Office.prototype.createDirectoryRecursive = function(dirPath) {
     if (parentDir !== "" && !fso.FolderExists(parentDir)) {
         this.createDirectoryRecursive(parentDir);
     }
-      fso.CreateFolder(dirPath);
+    fso.CreateFolder(dirPath);
+};
+// Added empty folder removal functionality for cleanup operations
+// This method recursively removes empty folders after file operations,
+// with protection for the root 'src' folder to maintain project structure
+Office.prototype.removeEmptyFolders = function(dirPath) {
+    if (!fso.FolderExists(dirPath)) return;
+    
+    var folder = fso.GetFolder(dirPath);
+    var self = this;
+    
+    // 子フォルダを再帰的に処理
+    foreachEnum(folder.SubFolders, function(subFolder) {
+        self.removeEmptyFolders(subFolder.Path);
+    });
+    
+    // 現在のフォルダが空の場合は削除
+    if (folder.Files.Count === 0 && folder.SubFolders.Count === 0) {
+        // ルートの src フォルダは削除しない
+        if (fso.GetFileName(dirPath).toLowerCase() !== "src") {
+            folder.Delete();
+        }
+    }
 };
 // Modified exportSource to support @Folder annotation-based directory structure
 Office.prototype.exportSource = function(ofDoc, expdir) {
@@ -912,10 +981,12 @@ Access.prototype.cleanupBinary = function(acProj, verbose) {
         var name = obj.Name;
         if (!(obj.Type.toString() in self.typeExtensionTable)) return false;
         
-        acApp.DoCmd.DeleteObject(obj.Type, name);
-        if (!!verbose) println("- Remove: " + name);
+        acApp.DoCmd.DeleteObject(obj.Type, name);        if (!!verbose) println("- Remove: " + name);
     });
 };
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Modified Access cleanupSource to use recursive file operations (same as Office prototype)
+// Provides consistent hierarchical cleanup capabilities for Access projects
 Access.prototype.cleanupSource = function(dir, verbose) {
     if (!fso.FolderExists(dir)) {
          fso.CreateFolder(dir);
@@ -923,25 +994,39 @@ Access.prototype.cleanupSource = function(dir, verbose) {
     }
     
     var self = this;
-    foreachEnum(fso.GetFolder(dir).Files, function(fl) {
+    // 再帰的にファイルを検索して削除
+    var allFiles = this.getFilesRecursively(dir);
+    
+    for (var i = 0; i < allFiles.length; i++) {
+        var fl = allFiles[i];
         var fname = fso.GetFileName(fl.Path);
         var xname = fso.GetExtensionName(fl.Path);
-        if (!(xname in self.extensionTypeTable)) return false;
+        if (!(xname in self.extensionTypeTable)) continue;
         
         fl.Delete();
         if (!!verbose) println("- Remove: " + fname);
-    });
+    }
+      // 空のフォルダも削除（フォルダ階層をクリーンアップ）
+    this.removeEmptyFolders(dir);
 };
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Modified Access importSource to support hierarchical folder structures during combine operations
+// Now uses getFilesRecursively to find all files in nested folder structures (same as Office prototype)
 Access.prototype.importSource = function(impdir, acProj) {
     var acApp  = acProj.Application;
     var compos = acApp.VBE.ActiveVBProject.VBComponents;
     var self   = this;
-    foreachEnum(fso.GetFolder(impdir).Files, function(fl) {
+    
+    // 再帰的にファイルを検索
+    var allFiles = this.getFilesRecursively(impdir);
+    
+    for (var i = 0; i < allFiles.length; i++) {
+        var fl = allFiles[i];
         var path  = fl.Path;
         var fname = fso.GetFileName(path);
         var xname = fso.GetExtensionName(path);
         var bname = fso.GetBaseName(path);
-        if (!(xname in self.extensionTypeTable)) return false;
+        if (!(xname in self.extensionTypeTable)) continue;
         
         var typ = self.extensionTypeTable[xname];
         if (typ == acModule) {
@@ -952,8 +1037,97 @@ Access.prototype.importSource = function(impdir, acProj) {
         else {
             acApp.LoadFromText(typ, bname, path);
         }
-        println("- Import: " + fname);
+        
+        // 相対パスを表示用に作成
+        var relativePath = path.replace(impdir, "").replace(/^\\/, "");
+        println("- Import: " + (relativePath || fname));
+    }
+};
+// Added recursive file search for Access (functionality identical to Office prototype)
+// Enables hierarchical folder structure handling during combine operations for Access projects
+Access.prototype.getFilesRecursively = function(folderPath, fileList) {
+    if (!fileList) fileList = [];
+    
+    if (!fso.FolderExists(folderPath)) return fileList;
+    
+    var folder = fso.GetFolder(folderPath);
+    var self = this;
+    
+    // 現在のフォルダ内のファイルを追加
+    foreachEnum(folder.Files, function(file) {
+        fileList.push(file);
     });
+    
+    // サブフォルダを再帰的に検索
+    foreachEnum(folder.SubFolders, function(subFolder) {
+        self.getFilesRecursively(subFolder.Path, fileList);
+    });
+    
+    return fileList;
+};
+// Added empty folder removal functionality for Access (functionality identical to Office prototype)
+// Provides cleanup capabilities for Access projects with same safety protections
+Access.prototype.removeEmptyFolders = function(dirPath) {
+    if (!fso.FolderExists(dirPath)) return;
+    
+    var folder = fso.GetFolder(dirPath);
+    var self = this;
+    
+    // 子フォルダを再帰的に処理
+    foreachEnum(folder.SubFolders, function(subFolder) {
+        self.removeEmptyFolders(subFolder.Path);
+    });
+    
+    // 現在のフォルダが空の場合は削除
+    if (folder.Files.Count === 0 && folder.SubFolders.Count === 0) {
+        // ルートの src フォルダは削除しない
+        if (fso.GetFileName(dirPath).toLowerCase() !== "src") {
+            folder.Delete();
+        }
+    }
+};
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Added @Folder annotation parsing functionality for Access projects (same functionality as Office prototype)
+Access.prototype.parseFolderAnnotation = function(codeModule) {
+    // @Folder アノテーションを解析して、フォルダパスを返す
+    // 見つからない場合や無効な場合は空文字を返す
+    
+    var lineCount = codeModule.CountOfLines;
+    for (var i = 1; i <= lineCount; i++) {
+        var line = codeModule.Lines(i, 1);
+        var match = line.match(/^\s*'\s*@Folder\s*\(\s*"([^"]*)"\s*\)/);
+        if (match) {
+            var folderPath = match[1].trim();
+            if (folderPath === "") return "";
+            
+            // ドット区切りをスラッシュ区切りに変換
+            folderPath = folderPath.replace(/\./g, "\\");
+            
+            // 無効な文字をチェック（Windows ファイルシステムで使用できない文字）
+            var invalidChars = /[<>:"|?*]/;
+            if (invalidChars.test(folderPath)) {
+                println("  Warning: Invalid characters in @Folder annotation, using default location");
+                return "";
+            }
+            
+            return folderPath;
+        }
+    }
+    return "";
+};
+// === MODIFICATION (2025-06-09 by ryuryu333) ===
+// Added recursive directory creation functionality for Access projects (same functionality as Office prototype)
+Access.prototype.createDirectoryRecursive = function(dirPath) {
+    // ディレクトリを再帰的に作成
+    if (fso.FolderExists(dirPath)) {
+        return;
+    }
+    
+    var parentDir = fso.GetParentFolderName(dirPath);
+    if (parentDir !== "" && !fso.FolderExists(parentDir)) {
+        this.createDirectoryRecursive(parentDir);
+    }
+    fso.CreateFolder(dirPath);
 };
 Access.prototype.exportSource = function(acProj, expdir) {
     var acApp  = acProj.Application;
