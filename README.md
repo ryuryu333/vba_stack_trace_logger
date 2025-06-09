@@ -4,7 +4,9 @@ VBA 用のロガー、イミディエイトウィンドウ、エクセルシー�
 ## 使用方法
 
 ```bash
+# コードのエクスポート
 cscript vbac.wsf decombine
+# コードのインポート
 cscript vbac.wsf combine
 ```
 
