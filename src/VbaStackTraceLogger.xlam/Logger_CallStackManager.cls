@@ -8,6 +8,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_CallStackManager.cls
+'@Folder("VbaStackTraceLogger.StackTrace")
+
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_CallStackManager"
 

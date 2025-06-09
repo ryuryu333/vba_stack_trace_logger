@@ -8,6 +8,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_LogInfoStruct.cls
+'@Folder("VbaStackTraceLogger.Utilities")
+
 Option Explicit
 
 Private pMessage As String

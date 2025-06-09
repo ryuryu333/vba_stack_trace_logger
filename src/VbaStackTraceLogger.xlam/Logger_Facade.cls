@@ -8,10 +8,13 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_Facade.cls
+'@Folder("VbaStackTraceLogger.Core")
+
 ' ユーザーインターフェースをここに集約している
 ' ユーザーは Logger_Provider 経由で Logger_Facade にアクセスする
 ' （実際の流れは Logger_Provider -> Logger_SingletonManager -> Logger_Facade）
 ' myLogger.Log の様に利用する
+
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_Facade"
 

@@ -8,6 +8,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_MetadataHelper.cls
+'@Folder("VbaStackTraceLogger.Utilities")
+
 Option Explicit
 
 #If VBA7 Then

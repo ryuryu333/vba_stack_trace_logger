@@ -8,6 +8,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_ProcedureTracer.cls
+'@Folder("VbaStackTraceLogger.StackTrace")
+
 ' RAII を模倣し、ライフサイクルと紐づけてスタックトレース情報の更新を実施
 ' 変数として使用するクラス
 Option Explicit

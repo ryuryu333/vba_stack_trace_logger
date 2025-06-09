@@ -8,6 +8,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_ExcelWriter.cls
+'@Folder("VbaStackTraceLogger.Writers")
+
 Option Explicit
 Implements Logger_ILogWriter
 

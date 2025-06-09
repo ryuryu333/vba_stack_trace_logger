@@ -1,5 +1,6 @@
 Attribute VB_Name = "Logger_DataStruct"
 ' Logger_DataStruct.bas
+'@Folder("VbaStackTraceLogger.Utilities")
 
 ' 無効値 を表す要素として LogTag_None = -1 も定義すべきだが
 ' インテリセンスにユーザーが使用しないものを表示したくなにので未定義

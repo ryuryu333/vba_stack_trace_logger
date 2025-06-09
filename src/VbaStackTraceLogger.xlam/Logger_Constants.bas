@@ -1,5 +1,7 @@
 Attribute VB_Name = "Logger_Constants"
 ' Logger_Constants.bas
+'@Folder("VbaStackTraceLogger.Utilities")
+
 Option Private Module
 Option Explicit
 
