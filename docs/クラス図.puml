@@ -48,15 +48,9 @@ class Logger_LogInfoBuilder {
     + BuildLogInfo()
 }
 
-' Log output filtering - extracted from Controller
-class Logger_OutputFilter {
-    + ShouldWriteLog()
-}
-
 Logger_Facade ---> Logger_Controller : call \n Initialize() \n UsingTracer() \n WriteLog() \n Terminate()
 Logger_Controller --> Logger_WriterManager : delegate writer management
 Logger_Controller --> Logger_LogInfoBuilder : delegate log info construction
-Logger_Controller --> Logger_OutputFilter : delegate output filtering
 
 ' User initialize logger through Logger_Facade.Initialize
 ' Setting values are defined through builders
