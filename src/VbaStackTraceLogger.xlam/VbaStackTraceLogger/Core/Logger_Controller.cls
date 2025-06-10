@@ -15,7 +15,7 @@ Private Const CLASS_NAME As String = "Logger_Controller"
 
 Private mCallStackManager As Logger_CallStackManager
 Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
-Private mMetadataHelper As Logger_MetadataHelper
+Private mLogInfoBuilder As Logger_LogInfoBuilder
 Private mWriterManager As Logger_WriterManager
 Private mLoggerConfig As Logger_ConfigStruct
 Private mIsInitialized As Boolean
@@ -23,7 +23,7 @@ Private mIsInitialized As Boolean
 Private Sub Class_Initialize()
     Set mCallStackManager = New Logger_CallStackManager
     Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
-    Set mMetadataHelper = New Logger_MetadataHelper
+    Set mLogInfoBuilder = New Logger_LogInfoBuilder
     Set mWriterManager = New Logger_WriterManager
 End Sub
 
@@ -67,18 +67,10 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
     
     ' === ロガーの設定を元に、ログ出力すべきかを判定 ===
     If ShouldWriteLog(userSelectedTag) = False Then Exit Sub
-    
     ' === logInfo に情報を書き込む ===
     Dim logInfo As Logger_LogInfoStruct
-    Set logInfo = New Logger_LogInfoStruct
-    With logInfo
-        .Message = writeMessage
-        .TagType = userSelectedTag
-        .TagName = mMetadataHelper.GetTagName(.TagType)
-        .Timestamp = mMetadataHelper.GetTimeStamp
-        .IsStackTraceEnabled = mLoggerConfig.IsStackTraceEnabled
-        If .IsStackTraceEnabled Then .CallPath = mCallStackManager.GetCurrentCallPath
-    End With
+    Set logInfo = mLogInfoBuilder.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mCallStackManager)
+    
     ' === 各 Writer にログ出力を命令 ===
     mWriterManager.WriteLogToAll logInfo
 End Sub
@@ -122,14 +114,12 @@ End Function
 ' === 終了処理 ===
 Public Sub Terminate()
     EnsureInitialized
-
-    mWriterManager.TerminateWriters
     
-    Set mMetadataHelper = Nothing
+    mWriterManager.TerminateWriters
+    Set mLogInfoBuilder = Nothing
     Set mProcedureTracerProvider = Nothing
     Set mCallStackManager = Nothing
     Set mWriterManager = Nothing
-End Sub
 End Sub
 
 ' 初期化済みか確認
@@ -148,7 +138,7 @@ Private Sub Class_Terminate()
     End If
     Set mCallStackManager = Nothing
     Set mProcedureTracerProvider = Nothing
-    Set mMetadataHelper = Nothing
+    Set mLogInfoBuilder = Nothing
     Set mWriterManager = Nothing
 End Sub
 

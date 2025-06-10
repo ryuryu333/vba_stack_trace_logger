@@ -43,8 +43,14 @@ class Logger_WriterManager {
     + WriterCount : Long
 }
 
+' Log information construction - extracted from Controller
+class Logger_LogInfoBuilder {
+    + BuildLogInfo()
+}
+
 Logger_Facade ---> Logger_Controller : call \n Initialize() \n UsingTracer() \n WriteLog() \n Terminate()
 Logger_Controller --> Logger_WriterManager : delegate writer management
+Logger_Controller --> Logger_LogInfoBuilder : delegate log info construction
 
 ' User initialize logger through Logger_Facade.Initialize
 ' Setting values are defined through builders
@@ -78,7 +84,7 @@ Logger_ConfigBuilder --> Logger_Facade::CompleteInitialization : build config \n
 class Logger_MetadataHelper {
 }
 
-Logger_Controller --> Logger_MetadataHelper : enrich log data
+Logger_LogInfoBuilder --> Logger_MetadataHelper : enrich log data
 
 ' Strategy pattern
 class Logger_ILogWriter {
