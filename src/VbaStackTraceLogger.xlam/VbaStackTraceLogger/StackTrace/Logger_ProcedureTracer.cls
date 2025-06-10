@@ -43,7 +43,7 @@ Public Sub Initialize(ByVal currentModuleName As String, ByVal currentProcedureN
     mCallSite = currentModuleName & "." & currentProcedureName
     
     ' コールスタック更新を指示
-    mStackTraceManager.EnterProcedure (mCallSite)
+    mStackTraceManager.EnterProcedure (mCallSite)  
     
     ' プロシージャ開始のログ出力を指示
     mController.WriteLog ENTER_MESSAG & mCallSite, LogTag_Trace
@@ -58,7 +58,6 @@ Private Sub Class_Terminate()
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Class_Terminate", _
             "初期化が未実施の状態で解放処理が呼ばれました"
     End If
-    
     ' プロシージャ終了のログ出力を指示
     mController.WriteLog EXIT_MESSAG & mCallSite, LogTag_Trace
     

@@ -13,8 +13,7 @@ Attribute VB_Exposed = False
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_Controller"
 
-Private mCallStackManager As Logger_CallStackManager
-Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
+Private mStackTraceController As Logger_StackTraceController
 Private mLogInfoBuilder As Logger_LogInfoBuilder
 Private mWriterManager As Logger_WriterManager
 Private mOutputFilter As Logger_OutputFilter
@@ -22,8 +21,7 @@ Private mLoggerConfig As Logger_ConfigStruct
 Private mIsInitialized As Boolean
 
 Private Sub Class_Initialize()
-    Set mCallStackManager = New Logger_CallStackManager
-    Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
+    Set mStackTraceController = New Logger_StackTraceController
     Set mLogInfoBuilder = New Logger_LogInfoBuilder
     Set mWriterManager = New Logger_WriterManager
     Set mOutputFilter = New Logger_OutputFilter
@@ -34,8 +32,8 @@ Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct)
     ' === 各引数を検証後、メンバ変数へ代入 ===
     ValidateConfig userConfig
     Set mLoggerConfig = userConfig
-    ' === ProcedureTracerProvider を初期化 ===
-    mProcedureTracerProvider.Initialize userConfig.IsStackTraceEnabled
+    ' === StackTraceController を初期化 ===
+    mStackTraceController.Initialize userConfig.IsStackTraceEnabled, Me
     
     ' === Writers を作成・初期化 ===
     mWriterManager.CreateWriters userConfig
@@ -71,7 +69,7 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
     
     ' === logInfo に情報を書き込む ===
     Dim logInfo As Logger_LogInfoStruct
-    Set logInfo = mLogInfoBuilder.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mCallStackManager)
+    Set logInfo = mLogInfoBuilder.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mStackTraceController.GetCallStackManager)
     
     ' === 各 Writer にログ出力を命令 ===
     mWriterManager.WriteLogToAll logInfo
@@ -82,8 +80,8 @@ Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
     
-    ' Provider に Tracer の生成を依頼
-    Set UsingTracer = mProcedureTracerProvider.CreateTracer(currentModuleName, currentProcName, mCallStackManager, Me)
+    ' StackTraceController に Tracer の生成を依頼
+    Set UsingTracer = mStackTraceController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
 
@@ -92,9 +90,9 @@ Public Sub Terminate()
     EnsureInitialized
     
     mWriterManager.TerminateWriters
+    mStackTraceController.Terminate
     Set mLogInfoBuilder = Nothing
-    Set mProcedureTracerProvider = Nothing
-    Set mCallStackManager = Nothing
+    Set mStackTraceController = Nothing
     Set mWriterManager = Nothing
     Set mOutputFilter = Nothing
 End Sub
@@ -113,8 +111,7 @@ Private Sub Class_Terminate()
     If Not mWriterManager Is Nothing Then
         mWriterManager.TerminateWriters
     End If
-    Set mCallStackManager = Nothing
-    Set mProcedureTracerProvider = Nothing
+    Set mStackTraceController = Nothing
     Set mLogInfoBuilder = Nothing
     Set mWriterManager = Nothing
     Set mOutputFilter = Nothing
