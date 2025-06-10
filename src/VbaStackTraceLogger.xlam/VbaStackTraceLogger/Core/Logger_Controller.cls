@@ -16,7 +16,7 @@ Private Const CLASS_NAME As String = "Logger_Controller"
 Private mCallStackManager As Logger_CallStackManager
 Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
 Private mMetadataHelper As Logger_MetadataHelper
-Private mWriters As Collection
+Private mWriterManager As Logger_WriterManager
 Private mLoggerConfig As Logger_ConfigStruct
 Private mIsInitialized As Boolean
 
@@ -24,7 +24,7 @@ Private Sub Class_Initialize()
     Set mCallStackManager = New Logger_CallStackManager
     Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
     Set mMetadataHelper = New Logger_MetadataHelper
-    Set mWriters = New Collection
+    Set mWriterManager = New Logger_WriterManager
 End Sub
 
 ' === 初期化処理 ===
@@ -32,26 +32,12 @@ Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct)
     ' === 各引数を検証後、メンバ変数へ代入 ===
     ValidateConfig userConfig
     Set mLoggerConfig = userConfig
-    
     ' === ProcedureTracerProvider を初期化 ===
     mProcedureTracerProvider.Initialize userConfig.IsStackTraceEnabled
     
-    ' === Writers を作成 ===
-    ' どこにログを出力するかを確認し、Logger_ILogWriter の具象クラスのインスタンスを作成、mWriters に追加
-    ' イミディエイトウインドウ（VBE）
-    If mLoggerConfig.IsWriteToImmediate Then
-        Dim immediateWriter As Logger_Writer_Immediate: Set immediateWriter = New Logger_Writer_Immediate
-        AddWriter immediateWriter
-    End If
-    ' エクセルシート（どのエクセルシートに書き込むかも設定）
-    If mLoggerConfig.IsWriteToExcelSheet Then
-        Dim excelWriter As Logger_Writer_Excel: Set excelWriter = New Logger_Writer_Excel
-        excelWriter.SetTargetSheet mLoggerConfig.OutputExcelSheet
-        AddWriter excelWriter
-    End If
-    
-    ' === Writers の初期化を実施 ===
-    InitializeWriters
+    ' === Writers を作成・初期化 ===
+    mWriterManager.CreateWriters userConfig
+    mWriterManager.InitializeWriters
     
     mIsInitialized = True
 End Sub
@@ -93,14 +79,8 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
         .IsStackTraceEnabled = mLoggerConfig.IsStackTraceEnabled
         If .IsStackTraceEnabled Then .CallPath = mCallStackManager.GetCurrentCallPath
     End With
-    
     ' === 各 Writer にログ出力を命令 ===
-    If mWriters Is Nothing Then Exit Sub
-    
-    Dim writer As Logger_ILogWriter
-    For Each writer In mWriters
-        writer.WriteLog logInfo
-    Next
+    mWriterManager.WriteLogToAll logInfo
 End Sub
 
 ' ロガーの設定を元に、ログ出力すべきかを判定
@@ -143,39 +123,13 @@ End Function
 Public Sub Terminate()
     EnsureInitialized
 
-    TerminateWriters
-    Set mWriters = Nothing
+    mWriterManager.TerminateWriters
     
     Set mMetadataHelper = Nothing
     Set mProcedureTracerProvider = Nothing
     Set mCallStackManager = Nothing
+    Set mWriterManager = Nothing
 End Sub
-
-' === Writer 関連の処理 ===
-' Writer を追加登録
-Private Sub AddWriter(writer As Logger_ILogWriter)
-    mWriters.Add writer
-End Sub
-
-' 各 Writer を初期化
-Private Sub InitializeWriters()
-    If mWriters.Count = 0 Then Exit Sub
-    
-    Dim writer As Logger_ILogWriter
-    For Each writer In mWriters
-        writer.Initialize
-    Next
-End Sub
-
-' 各Writerの終了処理
-Private Sub TerminateWriters()
-    If mWriters Is Nothing Then Exit Sub
-    If mWriters.Count = 0 Then Exit Sub
-    
-    Dim writer As Logger_ILogWriter
-    For Each writer In mWriters
-        writer.Terminate
-    Next
 End Sub
 
 ' 初期化済みか確認
@@ -189,11 +143,13 @@ End Sub
 
 Private Sub Class_Terminate()
     ' フェイルセーフ
-    TerminateWriters
+    If Not mWriterManager Is Nothing Then
+        mWriterManager.TerminateWriters
+    End If
     Set mCallStackManager = Nothing
     Set mProcedureTracerProvider = Nothing
     Set mMetadataHelper = Nothing
-    Set mWriters = Nothing
+    Set mWriterManager = Nothing
 End Sub
 
 

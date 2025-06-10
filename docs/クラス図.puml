@@ -34,7 +34,17 @@ class Logger_Controller {
     + Terminate()
 }
 
+' Writer management - extracted from Controller
+class Logger_WriterManager {
+    + CreateWriters()
+    + InitializeWriters()
+    + WriteLogToAll()
+    + TerminateWriters()
+    + WriterCount : Long
+}
+
 Logger_Facade ---> Logger_Controller : call \n Initialize() \n UsingTracer() \n WriteLog() \n Terminate()
+Logger_Controller --> Logger_WriterManager : delegate writer management
 
 ' User initialize logger through Logger_Facade.Initialize
 ' Setting values are defined through builders
@@ -81,6 +91,7 @@ package "Log Writers" {
 }
 
 Logger_Controller --> Logger_ILogWriter : Call WriteLog() \n send log data
+Logger_WriterManager --> Logger_ILogWriter : manage lifecycle \n and delegate calls
 Logger_ILogWriter <|.. Logger_Writer_Excel
 Logger_ILogWriter <|.. Logger_Writer_Immediate
 
