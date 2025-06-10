@@ -10,6 +10,12 @@ cscript vbac.wsf decombine
 cscript vbac.wsf combine
 ```
 
+## コードファイル作成時の注意点
+・**改行コード**
+CRLF
+・**文字エンコード**
+UTF-8
+
 ## ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています。
