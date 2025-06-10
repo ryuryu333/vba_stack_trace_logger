@@ -17,6 +17,7 @@ Private mCallStackManager As Logger_CallStackManager
 Private mProcedureTracerProvider As Logger_ProcedureTracerProvider
 Private mLogInfoBuilder As Logger_LogInfoBuilder
 Private mWriterManager As Logger_WriterManager
+Private mOutputFilter As Logger_OutputFilter
 Private mLoggerConfig As Logger_ConfigStruct
 Private mIsInitialized As Boolean
 
@@ -25,6 +26,7 @@ Private Sub Class_Initialize()
     Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
     Set mLogInfoBuilder = New Logger_LogInfoBuilder
     Set mWriterManager = New Logger_WriterManager
+    Set mOutputFilter = New Logger_OutputFilter
 End Sub
 
 ' === 初期化処理 ===
@@ -64,9 +66,9 @@ End Sub
 ' logInfo に情報を書き込んだ後、Writer に渡してログを出力させる
 Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As LoggerLogTag)
     EnsureInitialized
-    
     ' === ロガーの設定を元に、ログ出力すべきかを判定 ===
-    If ShouldWriteLog(userSelectedTag) = False Then Exit Sub
+    If mOutputFilter.ShouldWriteLog(userSelectedTag, mLoggerConfig) = False Then Exit Sub
+    
     ' === logInfo に情報を書き込む ===
     Dim logInfo As Logger_LogInfoStruct
     Set logInfo = mLogInfoBuilder.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mCallStackManager)
@@ -74,32 +76,6 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
     ' === 各 Writer にログ出力を命令 ===
     mWriterManager.WriteLogToAll logInfo
 End Sub
-
-' ロガーの設定を元に、ログ出力すべきかを判定
-' False となるパターンを順番に評価、どれにも当てはまらなければTrue
-Private Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag) As Boolean
-    ShouldWriteLog = True
-    
-    ' ログ出力が無効の場合
-    If mLoggerConfig.IsLoggingEnabled = False Then
-        ShouldWriteLog = False
-        Exit Function
-    End If
-    
-    ' 特定のタグのログ出力が無効の場合
-    If mLoggerConfig.IsTagFilteringEnabled Then
-        Dim userDefinedExcludedTags() As LoggerLogTag
-        userDefinedExcludedTags = mLoggerConfig.ExcludedTags
-        ' ユーザー設定された除外ログと一致するか確認
-        Dim i As Integer
-        For i = LBound(userDefinedExcludedTags) To UBound(userDefinedExcludedTags)
-            If selectedTag = userDefinedExcludedTags(i) Then
-                ShouldWriteLog = False
-                Exit Function
-            End If
-        Next i
-    End If
-End Function
 
 ' === スタックトレース ===
 Public Function UsingTracer(ByVal currentModuleName As String, _
@@ -120,6 +96,7 @@ Public Sub Terminate()
     Set mProcedureTracerProvider = Nothing
     Set mCallStackManager = Nothing
     Set mWriterManager = Nothing
+    Set mOutputFilter = Nothing
 End Sub
 
 ' 初期化済みか確認
@@ -140,6 +117,7 @@ Private Sub Class_Terminate()
     Set mProcedureTracerProvider = Nothing
     Set mLogInfoBuilder = Nothing
     Set mWriterManager = Nothing
+    Set mOutputFilter = Nothing
 End Sub
 
 
