@@ -1,6 +1,6 @@
 Attribute VB_Name = "Logger_SingletonManager"
 ' Logger_SingletonManager.bas
-'@Folder("VbaStackTraceLogger.Core")
+'@Folder("VbaStackTraceLogger.Core.API")
 
 Option Private Module
 Option Explicit

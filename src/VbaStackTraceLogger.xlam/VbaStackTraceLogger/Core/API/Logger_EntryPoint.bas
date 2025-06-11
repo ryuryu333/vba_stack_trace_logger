@@ -1,6 +1,6 @@
 Attribute VB_Name = "Logger_EntryPoint"
 ' Logger_EntryPoint.bas
-'@Folder("VbaStackTraceLogger.Core")
+'@Folder("VbaStackTraceLogger.Core.API")
 
 Option Explicit
 

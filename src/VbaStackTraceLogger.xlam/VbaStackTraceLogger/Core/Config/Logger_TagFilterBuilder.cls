@@ -8,7 +8,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_TagFilterBuilder.cls
-'@Folder("VbaStackTraceLogger.Config")
+'@Folder("VbaStackTraceLogger.Core.Config")
 
 Option Explicit
 Private Const CLASS_NAME As String = "TagFilterBuilder"

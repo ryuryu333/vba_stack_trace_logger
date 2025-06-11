@@ -8,7 +8,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_ConfigBuilder.cls
-'@Folder("VbaStackTraceLogger.Config")
+'@Folder("VbaStackTraceLogger.Core.Config")
 
 Option Explicit
 Private Const CLASS_NAME As String = "ConfigBuilder"
@@ -17,8 +17,8 @@ Private mConfig As Logger_ConfigStruct
 Private mLoggerFacade As Logger_Facade
 Private mIsBuilt As Boolean
 
-' ロガーの設定の初期値を指定
-' 必要最低限な機能のみを有効化する設定にしている
+' Specify initial values for logger settings
+' Settings are configured to enable only essential minimum functionality
 Private Sub Class_Initialize()
     Dim defaultConfig As Logger_ConfigStruct
     Set defaultConfig = New Logger_ConfigStruct
@@ -44,22 +44,22 @@ Friend Sub Initialize(ByRef loggerFacade As Logger_Facade)
 End Sub
 
 Public Function DisableLogging() As Logger_ConfigBuilder
-    ' IsLoggingEnabled の初期値は True
+    ' Initial value of IsLoggingEnabled is True
     mConfig.IsLoggingEnabled = False
     Set DisableLogging = Me
 End Function
 
 Public Function EnableTagFiltering() As Logger_TagFilterBuilder
-    ' IsLoggingEnabled の初期値は False
+    ' Initial value of IsTagFilteringEnabled is False
     mConfig.IsTagFilteringEnabled = True
-    ' サブビルダーへ連鎖させ、ExcludedTags の設定を強制する
-    ' SetExcludedTags した後は、Logger_ConfigBuilder の連鎖に返ってくる
+    ' Chain to sub-builder and force ExcludedTags settings
+    ' After SetExcludedTags, returns to Logger_ConfigBuilder chain
     Dim nextStep As New Logger_TagFilterBuilder
     nextStep.SetParentBuilder Me
     Set EnableTagFiltering = nextStep
 End Function
 
-' サブビルダー Logger_TagArrayBuilder により呼び出される
+' Called by sub-builder Logger_TagArrayBuilder
 Friend Sub SetExcludedTags(ByRef tags() As LoggerLogTag)
     Dim createdArray() As LoggerLogTag
     createdArray = tags

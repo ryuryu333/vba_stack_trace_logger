@@ -14,7 +14,7 @@ Option Explicit
 Private Const CLASS_NAME As String = "Logger_Controller"
 
 Private mStackTraceController As Logger_StackTraceController
-Private mLogInfoBuilder As Logger_LogInfoBuilder
+Private mLogInfoMetadataHelper As Logger_LogInfoMetadataHelper
 Private mWriterManager As Logger_WriterManager
 Private mOutputFilter As Logger_OutputFilter
 Private mLoggerConfig As Logger_ConfigStruct
@@ -22,31 +22,31 @@ Private mIsInitialized As Boolean
 
 Private Sub Class_Initialize()
     Set mStackTraceController = New Logger_StackTraceController
-    Set mLogInfoBuilder = New Logger_LogInfoBuilder
+    Set mLogInfoMetadataHelper = New Logger_LogInfoMetadataHelper
     Set mWriterManager = New Logger_WriterManager
     Set mOutputFilter = New Logger_OutputFilter
 End Sub
 
-' === 初期化処理 ===
+' === Initialization processing ===
 Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct)
-    ' === 各引数を検証後、メンバ変数へ代入 ===
+    ' === Validate each argument, then assign to member variables ===
     ValidateConfig userConfig
     Set mLoggerConfig = userConfig
-    ' === StackTraceController を初期化 ===
+    ' === Initialize StackTraceController ===
     mStackTraceController.Initialize userConfig.IsStackTraceEnabled, Me
     
-    ' === Writers を作成・初期化 ===
+    ' === Create and initialize Writers ===
     mWriterManager.CreateWriters userConfig
     mWriterManager.InitializeWriters
     
     mIsInitialized = True
 End Sub
 
-' 動的検証を実行、静的検証は Logger_ConfigBuilder にて実施
+' Execute dynamic validation, static validation is performed in Logger_ConfigBuilder
 Private Sub ValidateConfig(ByRef userConfig As Logger_ConfigStruct)
-    ' Excel出力設定の検証
+    ' Validate Excel output settings
     If userConfig.IsWriteToExcelSheet Then
-        ' エクセルシートにアクセスし、参照可能な状態かを確認
+        ' Access Excel sheet and verify it's accessible
         On Error Resume Next
         Dim testValue As String
         testValue = userConfig.OutputExcelSheet.Name
@@ -54,65 +54,63 @@ Private Sub ValidateConfig(ByRef userConfig As Logger_ConfigStruct)
             On Error GoTo 0
             Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
                 LOGGER_NAMESPACE & "." & CLASS_NAME & ".ValidateConfig", _
-                "指定されたエクセルシートにアクセスできません"
+                "Cannot access the specified Excel sheet"
         End If
         On Error GoTo 0
     End If
 End Sub
 
-' === ログ出力 ===
-' logInfo に情報を書き込んだ後、Writer に渡してログを出力させる
+' === Log output ===
+' Write information to logInfo, then pass to Writer for log output
 Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As LoggerLogTag)
     EnsureInitialized
-    ' === ロガーの設定を元に、ログ出力すべきかを判定 ===
+    ' === Based on logger settings, determine if log should be output ===
     If mOutputFilter.ShouldWriteLog(userSelectedTag, mLoggerConfig) = False Then Exit Sub
-    
-    ' === logInfo に情報を書き込む ===
+      ' === Write information to logInfo ===
     Dim logInfo As Logger_LogInfoStruct
-    Set logInfo = mLogInfoBuilder.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mStackTraceController.GetCallStackManager)
+    Set logInfo = mLogInfoMetadataHelper.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mStackTraceController.GetCallStackManager)
     
-    ' === 各 Writer にログ出力を命令 ===
+    ' === Command each Writer to output log ===
     mWriterManager.WriteLogToAll logInfo
 End Sub
 
-' === スタックトレース ===
+' === Stack trace ===
 Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
     
-    ' StackTraceController に Tracer の生成を依頼
+    ' Request Tracer creation from StackTraceController
     Set UsingTracer = mStackTraceController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
 
-' === 終了処理 ===
+' === Termination processing ===
 Public Sub Terminate()
     EnsureInitialized
-    
-    mWriterManager.TerminateWriters
+      mWriterManager.TerminateWriters
     mStackTraceController.Terminate
-    Set mLogInfoBuilder = Nothing
+    Set mLogInfoMetadataHelper = Nothing
     Set mStackTraceController = Nothing
     Set mWriterManager = Nothing
     Set mOutputFilter = Nothing
 End Sub
 
-' 初期化済みか確認
+' Check if initialized
 Private Sub EnsureInitialized()
     If Not mIsInitialized Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
-            "Controller が初期化されていません"
+            "Controller is not initialized"
     End If
 End Sub
 
 Private Sub Class_Terminate()
-    ' フェイルセーフ
+    ' Fail-safe
     If Not mWriterManager Is Nothing Then
         mWriterManager.TerminateWriters
     End If
     Set mStackTraceController = Nothing
-    Set mLogInfoBuilder = Nothing
+    Set mLogInfoMetadataHelper = Nothing
     Set mWriterManager = Nothing
     Set mOutputFilter = Nothing
 End Sub

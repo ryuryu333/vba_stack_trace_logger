@@ -8,12 +8,12 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_Facade.cls
-'@Folder("VbaStackTraceLogger.Core")
+'@Folder("VbaStackTraceLogger.Core.API")
 
-' ユーザーインターフェースをここに集約している
-' ユーザーは Logger_Provider 経由で Logger_Facade にアクセスする
-' （実際の流れは Logger_Provider -> Logger_SingletonManager -> Logger_Facade）
-' myLogger.Log の様に利用する
+' User interface aggregation class
+' Users access Logger_Facade via Logger_Provider
+' (Actual flow: Logger_Provider -> Logger_SingletonManager -> Logger_Facade)
+' Usage: myLogger.Log
 
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_Facade"
@@ -25,48 +25,45 @@ Private Sub Class_Initialize()
     Set mController = New Logger_Controller
 End Sub
 
-' === ロガーの初期化を指示 ===
-' User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
-' の順番で処理が実施される
+' === Logger initialization ===
+' Processing order: User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
 Public Function Initialize() As Logger_ConfigBuilder
     If mIsInitialized Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "ロガーはすでに初期化済みです、2回目の初期化は実行できません"
+            "Logger is already initialized, second initialization cannot be executed"
         Exit Function
     End If
 
-    ' ビルダーで初期化に用いる設定値を作成
-    ' その後、CompleteInitialization に返ってくる
+    ' Create configuration values using builder
+    ' Then returns to CompleteInitialization
     Dim configBuilder As New Logger_ConfigBuilder
     configBuilder.Initialize Me
     Set Initialize = configBuilder
 End Function
 
-' User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
-' の順番で処理が実施される
+' Processing order: User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
 Public Sub CompleteInitialization(ByRef userConfig As Logger_ConfigStruct)
     If mIsInitialized Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "ロガーはすでに初期化済みです、2回目の初期化は実行できません"
-        Exit Sub
+            "Logger is already initialized, second initialization cannot be executed"
     End If
     
-    ' ユーザーが作成した設定値を用いて、Controller を初期化
+    ' Initialize Controller using user-created configuration values
     mController.Initialize userConfig
     
     mIsInitialized = True
 End Sub
 
-' === ログ出力を指示 ===
+' === Log output instruction ===
 Public Sub Log(ByVal writeMessage As String, Optional ByVal userSelectedTag As LoggerLogTag = LoggerLogTag.LogTag_Info)
     EnsureInitialized
 
     mController.WriteLog writeMessage, userSelectedTag
 End Sub
 
-' === ロガーの終了処理を指示 ===
+' === Logger termination instruction ===
 Public Sub Terminate()
     EnsureInitialized
     
@@ -76,10 +73,10 @@ Public Sub Terminate()
     mIsInitialized = False
 End Sub
 
-' === スタックトレース関連 ===
+' === Stack trace related ===
 ' ProcedureTracerProvider > Create ProcedureTracer > User get ProcedureTracer instance
-' ユーザーが ProcedureTracer をプロシージャの冒頭で変数として保持、プロシージャの終了と同時に変数が破棄される
-' インスタンスのライフサイクルを利用して、プロシージャの開始・終了を検知し処理を実施
+' User holds ProcedureTracer as variable at procedure start, variable is destroyed when procedure ends
+' Utilizes instance lifecycle to detect procedure start/end and execute processing
 Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
@@ -87,24 +84,24 @@ Public Function UsingTracer(ByVal currentModuleName As String, _
     Set UsingTracer = mController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
-' === utility 関数 ===
-' Logger_SingletonManager の Logger_Facade インスタンスを破棄する
+' === Utility functions ===
+' Destroy Logger_Facade instance in Logger_SingletonManager
 Public Sub Reset()
     ReleaseMyLogger
 End Sub
 
-' === モジュール全体で利用される Private 関数 ===
-' 初期化済みか確認
+' === Private functions used throughout the module ===
+' Check if initialized
 Private Sub EnsureInitialized()
     If Not mIsInitialized Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
-            "ロガーが初期化されていません"
+            "Logger is not initialized"
     End If
 End Sub
 
 Private Sub Class_Terminate()
-    ' フェイルセーフ
+    ' Fail-safe
     Set mController = Nothing
 End Sub
 
