@@ -3,31 +3,32 @@ title VBA Stack Trace Logger Class Diagram
 
 class Logger_EntryPoint << (M,66CCFF) Module >> #LightBlue ##black {
     + MyLogger() : Logger_Facade
-}
-note top of Logger_EntryPoint
+    
+    ==
     User use logger through MyLogger().
-    This module is **public**, and **users use it directly**.
-        **e.g. MyLogger.Log "Message"**
-end note
+    This module is **public**,
+    and **users use it directly**.
+    **e.g. MyLogger.Log "Message"**
+}  
 
 class Logger_SingletonManager << (M,66CCFF) Module >> {
     - mLogger : Logger_Facade
     + GetMyLogger() : Logger_Facade
     + ReleaseMyLogger()
-}
-note top of Logger_SingletonManager
+    
+    ==
     When the logger is loaded as an external add-in,
     VBA keeps its member variables alive even after a macro ends.
     **The user should call ResetMyLogger() before initialization,**
     **so that each session starts with a clean state.**
-end note
+}
 
 ' Logger API
 class Logger_Facade {
-    + Initialize()
-    ~ CompleteInitialization()
-    + Log()
-    + UsingTracer()
+    + Initialize() : Logger_ConfigBuilder
+    ~ CompleteInitialization(Logger_ConfigStruct)
+    + Log(writeMessage, Optional LoggerLogTag)
+    + UsingTracer(ModuleName, ProcedureName) : Logger_ProcedureTracer
     + Terminate()
     + Reset()
 }
@@ -35,41 +36,46 @@ class Logger_Facade {
 ' Logger main logic
 ' e.g. "Logger_Facade.log" call "Logger_Controller.WriteLog"
 class Logger_Controller {
-    + Initialize()
-    + UsingTracer()
-    + WriteLog()
+    + Initialize(Logger_ConfigStruct)
+    - ValidateConfig()
+    + WriteLog(writeMessage, LoggerLogTag)
+    + UsingTracer(ModuleName, ProcedureName) : Logger_ProcedureTracer
     + Terminate()
 }
 
 ' Writer management - extracted from Controller
 class Logger_WriterManager {
-    + CreateWriters()
     + InitializeWriters()
-    + WriteLogToAll()
+    + CreateWriters(Logger_ConfigStruct)
+    + WriteLogToAll(Logger_LogInfoStruct)
     + TerminateWriters()
-    + WriterCount : Long
 }
 
 ' Log information construction - extracted from Controller
 class Logger_LogInfoMetadataHelper {
-    + BuildLogInfo(userMessage, userSelectedTag, config, callPath As String)
+    + BuildLogInfo() : Logger_LogInfoStruct
+
+    ==
+    arguments:
+    writeMessage, LoggerLogTag
+    Logger_ConfigStruct, currentCallPath
 }
 
 ' Metadata provider for log information
 class Logger_LogMetadataProvider {
-    + GetTagName()
-    + GetTimeStamp()
+    + GetTagName(LoggerLogTag) : String
+    + GetTimeStamp() : String
 }
 
 ' Output filtering - extracted from Controller
 class Logger_OutputFilter {
-    + ShouldWriteLog()
+    + ShouldWriteLog() : Boolean
 }
 
 ' User initialize logger through Logger_Facade.Initialize
 ' Setting values are defined through builders
 ' e.g. MyLogger.Initialize.EnabledStckTrace.Build
-package "Config Builders" <<e.g. MyLogger.Initialize.EnabledStckTrace.Build>> {
+package "Config Builders" {
     ' Main builder
     class Logger_ConfigBuilder {
         - Private mConfig : Logger_ConfigStruct
@@ -84,18 +90,31 @@ package "Config Builders" <<e.g. MyLogger.Initialize.EnabledStckTrace.Build>> {
 
         + Build()
         - Validate()
+
+        ==
+        This is the main builder for logger configuration.
+        It allows users to set various options for the logger.
+        e.g. MyLogger.Initialize.EnabledStckTrace.Build
     }
     ' Sub builders
-    ' When user call "Logger_ConfigBuilder.EnableWriteToExcelSheet",
-    ' next chain is only "Logger_ExcelOutputBuilder.SetOutputExcelSheet"
+    ' When user call "EnableWriteToExcelSheet()",
+    ' next chain is only "SetOutputExcelSheet()"
     class Logger_ExcelOutputBuilder {
         ~ SetParentBuilder(Logger_ConfigBuilder)
         + SetOutputExcelSheet(Worksheet) : Logger_ConfigBuilder
+        
+        ==
+        When user call "EnableWriteToExcelSheet()",
+        next chain is only "SetOutputExcelSheet()".
     }
     class Logger_TagFilterBuilder {
         ~ SetParentBuilder(Logger_ConfigBuilder)
         + Add(LoggerLogTag) : Logger_TagFilterBuilder
         + Apply() : Logger_ConfigBuilder
+
+        ==
+        Create filter tag(s) array.
+        e.g. Add(LoggerLogTag.Debug).Apply()
     }
 }
 
@@ -103,12 +122,12 @@ package "Config Builders" <<e.g. MyLogger.Initialize.EnabledStckTrace.Build>> {
 ' Logger_LogMetadataProvider defined in main section
 
 ' Strategy pattern
-class Logger_ILogWriter <<Core.Writer>> {
+interface Logger_ILogWriter {
     + Initialize()
     + WriteLog(Logger_LogInfoStruct)
     + Terminate()
 }
-package "Log Writers" <<Core.Writer>> {
+package "Log Writers" {
     class Logger_Writer_Excel {
     }
     class Logger_Writer_Immediate {
@@ -141,13 +160,13 @@ package "StackTrace" {
     class Logger_ProcedureTracer {
         + Initialize()
         - Class_Terminate()
-    }
-    note left of Logger_ProcedureTracer
+
+        ==
         Just declare at the top of a procedure.
         **Automatically tracks start and end (like RAII).**
         e.g. Dim scopeGuard = MyLogger.UsingTracer
                         ("ModuleName", "ProcedureName")
-    end note
+    }
     ' Provides procedure tracer instance
     class Logger_ProcedureTracerProvider {
         + CreateTracer()
@@ -157,15 +176,16 @@ package "StackTrace" {
 ' ====== relationship ======
 ' === API ===
 ' Note: User --> Logger_EntryPoint : call MyLogger & get Facade
-Logger_EntryPoint -> Logger_SingletonManager : get Facade
+Logger_EntryPoint --> Logger_SingletonManager : get Facade
 Logger_SingletonManager --> Logger_Facade : instantinate
 Logger_Facade --> Logger_SingletonManager : call ReleaseMyLogger() \n reset singleton
 ' === Logger Initilize & build config ===
-Logger_Facade::Initialize --> Logger_ConfigBuilder : select config option \n via builder \n method chain
-Logger_ConfigBuilder --> Logger_Facade::CompleteInitialization : build config \n do initialization
+Logger_Facade --> Logger_ConfigBuilder : Facade.Initialize() \n starts the builder method chain
+Logger_ConfigBuilder --> Logger_Facade : build config & call buck \n Facade.CompleteInitialization()
 ' Main builder
 Logger_ConfigBuilder --> Logger_ExcelOutputBuilder : set enabled
 Logger_ConfigBuilder --> Logger_TagFilterBuilder : set enabled
+Logger_ConfigBuilder --> Logger_ConfigBuilder : set value \n return main builder
 ' Sub builders
 Logger_ExcelOutputBuilder --> Logger_ExcelOutputBuilder : set output sheet
 Logger_ExcelOutputBuilder --> Logger_ConfigBuilder : set value \n return main builder
@@ -176,7 +196,7 @@ Logger_Facade ---> Logger_Controller : call \n Initialize() \n UsingTracer() \n 
 Logger_Controller --> Logger_WriterManager : delegate writer management
 Logger_Controller --> Logger_LogInfoMetadataHelper : delegate log info construction
 Logger_Controller --> Logger_OutputFilter : delegate output filtering
-Logger_Controller --> Logger_StackTraceController : delegate stack trace management
+Logger_Controller --> Logger_StackTraceController : delegate stack trace management \n get current call path
 Logger_StackTraceController --> Logger_Controller : callback for log output \n (circular reference via callback)
 ' === Writers ===
 Logger_WriterManager --> Logger_ILogWriter : manage lifecycle \n and delegate calls
@@ -186,9 +206,7 @@ Logger_ILogWriter <|.. Logger_Writer_Immediate
 Logger_StackTraceController --> Logger_CallStackManager : manage call stack
 Logger_StackTraceController --> Logger_ProcedureTracerProvider : get tracer
 Logger_ProcedureTracerProvider --> Logger_ProcedureTracer : create
-Logger_ProcedureTracer --> Logger_StackTraceController : notify start/end \n (callback pattern)
-Logger_Controller --> Logger_StackTraceController : get current call path
-Logger_LogInfoMetadataHelper : receives call path as String parameter
+Logger_ProcedureTracer --> Logger_StackTraceController : notify start/end
 
 
 Logger_LogInfoMetadataHelper --> Logger_LogMetadataProvider : enrich log data
