@@ -10,63 +10,48 @@ Attribute VB_Exposed = False
 ' Logger_ProcedureTracer.cls
 '@Folder("VbaStackTraceLogger.StackTrace")
 
-' RAII を模倣し、ライフサイクルと紐づけてスタックトレース情報の更新を実施
-' 変数として使用するクラス
+' Mimics RAII pattern, updates stack trace information tied to lifecycle
+' Class used as variable
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_ProcedureTracer"
 
-Private Const ENTER_MESSAG As String = ">> Enter "
-Private Const EXIT_MESSAG As String = "<< Exit "
 Private mCallSite As String
 
-Private mStackTraceManager As Logger_CallStackManager
-Private mController As Logger_Controller
+Private mStackTraceController As Logger_StackTraceController
 Private mIsInitialized As Boolean
 
-' インスタンス化の後に初期化が指示される
-' 引数付きコンストラクタの代わり
+' Initialization is instructed after instantiation
+' Substitute for parameterized constructor
 Public Sub Initialize(ByVal currentModuleName As String, ByVal currentProcedureName As String, _
-                      ByRef stackTraceManager As Logger_CallStackManager, ByRef controller As Logger_Controller)
-    If stackTraceManager Is Nothing Then
+                      ByRef stackTraceController As Logger_StackTraceController)
+    If stackTraceController Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "StackTraceManager のインスタンスが見つかりません"
-    End If
-    If controller Is Nothing Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "controller のインスタンスが見つかりません"
+            "StackTraceController instance not found"
     End If
     
-    Set mStackTraceManager = stackTraceManager
-    Set mController = controller
+    Set mStackTraceController = stackTraceController
     mCallSite = currentModuleName & "." & currentProcedureName
     
-    ' コールスタック更新を指示
-    mStackTraceManager.EnterProcedure (mCallSite)  
-    
-    ' プロシージャ開始のログ出力を指示
-    mController.WriteLog ENTER_MESSAG & mCallSite, LogTag_Trace
+    ' Notify procedure entry to StackTraceController
+    mStackTraceController.NotifyProcedureEnter mCallSite
     
     mIsInitialized = True
 End Sub
 
-' デストラクタ
+' Destructor
 Private Sub Class_Terminate()
     If mIsInitialized = False Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Class_Terminate", _
-            "初期化が未実施の状態で解放処理が呼ばれました"
+            "Cleanup called without initialization"
     End If
-    ' プロシージャ終了のログ出力を指示
-    mController.WriteLog EXIT_MESSAG & mCallSite, LogTag_Trace
     
-    ' コールスタック更新を指示
-    mStackTraceManager.ExitProcedure
+    ' Notify procedure exit to StackTraceController
+    mStackTraceController.NotifyProcedureExit mCallSite
     
-    ' リソース解放
-    Set mStackTraceManager = Nothing
-    Set mController = Nothing
+    ' Release resources
+    Set mStackTraceController = Nothing
 End Sub
 
 

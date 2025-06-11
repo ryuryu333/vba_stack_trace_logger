@@ -23,37 +23,56 @@ Private Sub Class_Initialize()
     Set mProcedureTracerProvider = New Logger_ProcedureTracerProvider
 End Sub
 
-' === 初期化処理 ===
+' === Initialization ===
 Public Sub Initialize(ByVal IsStackTraceEnabled As Boolean, ByRef mainController As Logger_Controller)
     If mainController Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "メインコントローラーのインスタンスが見つかりません"
+            "Main controller instance not found"
     End If
     
     Set mMainController = mainController
     
-    ' === ProcedureTracerProvider を初期化 ===
+    ' === Initialize ProcedureTracerProvider ===
     mProcedureTracerProvider.Initialize IsStackTraceEnabled
     
     mIsInitialized = True
 End Sub
 
-' === スタックトレース ===
+' === Stack Trace ===
 Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
-      ' Provider に Tracer の生成を依頼（現在は循環参照があるがそのまま残す）
-    Set UsingTracer = mProcedureTracerProvider.CreateTracer(currentModuleName, currentProcName, mCallStackManager, mMainController)
+    ' Request Tracer creation from Provider
+    Set UsingTracer = mProcedureTracerProvider.CreateTracer(currentModuleName, currentProcName, Me)
 End Function
 
-' === CallStackManager への参照を取得 ===
+' === Get CallStackManager reference ===
 Public Function GetCallStackManager() As Logger_CallStackManager
     EnsureInitialized
     Set GetCallStackManager = mCallStackManager
 End Function
 
-' === 終了処理 ===
+' === Callback from ProcedureTracer ===
+Public Sub NotifyProcedureEnter(ByVal callSite As String)
+    EnsureInitialized
+    
+    ' 1. Update call stack
+    mCallStackManager.EnterProcedure callSite
+    ' 2. Request log output
+    mMainController.WriteLog ">> Enter " & callSite, LogTag_Trace
+End Sub
+
+Public Sub NotifyProcedureExit(ByVal callSite As String)
+    EnsureInitialized
+    
+    ' 1. Request log output
+    mMainController.WriteLog "<< Exit " & callSite, LogTag_Trace
+    ' 2. Update call stack
+    mCallStackManager.ExitProcedure
+End Sub
+
+' === Cleanup ===
 Public Sub Terminate()
     EnsureInitialized
     
@@ -63,17 +82,17 @@ Public Sub Terminate()
     mIsInitialized = False
 End Sub
 
-' 初期化済みか確認
+' Check if initialized
 Private Sub EnsureInitialized()
     If Not mIsInitialized Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
-            "StackTraceController が初期化されていません"
+            "StackTraceController is not initialized"
     End If
 End Sub
 
 Private Sub Class_Terminate()
-    ' フェイルセーフ
+    ' Fail-safe
     Set mCallStackManager = Nothing
     Set mProcedureTracerProvider = Nothing
     Set mMainController = Nothing
