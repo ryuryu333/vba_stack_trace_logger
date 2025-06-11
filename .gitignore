@@ -5,3 +5,6 @@
 # Excel files
 *.xlsx
 *.xlsm
+
+# GitHub files
+.github/
