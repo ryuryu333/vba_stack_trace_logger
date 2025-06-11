@@ -53,6 +53,12 @@ Public Function GetCallStackManager() As Logger_CallStackManager
     Set GetCallStackManager = mCallStackManager
 End Function
 
+' === Get current call path ===
+Public Function GetCurrentCallPath() As String
+    EnsureInitialized
+    GetCurrentCallPath = mCallStackManager.GetCurrentCallPath()
+End Function
+
 ' === Callback from ProcedureTracer ===
 Public Sub NotifyProcedureEnter(ByVal callSite As String)
     EnsureInitialized

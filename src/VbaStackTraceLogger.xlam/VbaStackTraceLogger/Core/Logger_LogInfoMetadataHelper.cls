@@ -20,7 +20,7 @@ Private Sub Class_Initialize()
 End Sub
 
 ' Build complete log information structure with metadata
-Public Function BuildLogInfo(ByVal userMessage As String, ByVal userSelectedTag As LoggerLogTag, ByRef config As Logger_ConfigStruct, ByRef callStackManager As Logger_CallStackManager) As Logger_LogInfoStruct
+Public Function BuildLogInfo(ByVal userMessage As String, ByVal userSelectedTag As LoggerLogTag, ByRef userConfig As Logger_ConfigStruct, ByVal currentCallPath As String) As Logger_LogInfoStruct
     
     Dim logInfo As Logger_LogInfoStruct
     Set logInfo = New Logger_LogInfoStruct
@@ -29,8 +29,8 @@ Public Function BuildLogInfo(ByVal userMessage As String, ByVal userSelectedTag 
         .TagType = userSelectedTag
         .TagName = mMetadataProvider.GetTagName(.TagType)
         .Timestamp = mMetadataProvider.GetTimeStamp
-        .IsStackTraceEnabled = config.IsStackTraceEnabled
-        If .IsStackTraceEnabled Then .CallPath = callStackManager.GetCurrentCallPath
+        .IsStackTraceEnabled = userConfig.IsStackTraceEnabled
+        If .IsStackTraceEnabled Then .CallPath = currentCallPath
     End With
     
     Set BuildLogInfo = logInfo

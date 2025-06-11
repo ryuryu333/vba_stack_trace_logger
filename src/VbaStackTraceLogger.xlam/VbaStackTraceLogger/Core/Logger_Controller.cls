@@ -66,9 +66,16 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
     EnsureInitialized
     ' === Based on logger settings, determine if log should be output ===
     If mOutputFilter.ShouldWriteLog(userSelectedTag, mLoggerConfig) = False Then Exit Sub
-      ' === Write information to logInfo ===
+    ' === Write information to logInfo ===
+    Dim CallPath As String
+    If mLoggerConfig.IsStackTraceEnabled Then
+        CallPath = mStackTraceController.GetCurrentCallPath()
+    Else
+        CallPath = ""
+    End If
+    
     Dim logInfo As Logger_LogInfoStruct
-    Set logInfo = mLogInfoMetadataHelper.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, mStackTraceController.GetCallStackManager)
+    Set logInfo = mLogInfoMetadataHelper.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, CallPath)
     
     ' === Command each Writer to output log ===
     mWriterManager.WriteLogToAll logInfo
