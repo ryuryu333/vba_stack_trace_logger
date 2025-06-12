@@ -74,12 +74,6 @@ Public Function UsingTracer(ByVal currentModuleName As String, _
     Set UsingTracer = mController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
-' === Utility functions ===
-' Destroy Logger_Facade instance in Logger_SingletonManager
-Public Sub Reset()
-    ReleaseMyLogger
-End Sub
-
 ' === Private functions used throughout the module ===
 ' Check if initialized
 Private Sub EnsureInitialized()
