@@ -9,7 +9,7 @@ class Logger_EntryPoint << (M,66CCFF) Module >> #LightBlue ##black {
     This module is **public**,
     and **users use it directly**.
     **e.g. MyLogger.Log "Message"**
-}  
+}
 
 class Logger_SingletonManager << (M,66CCFF) Module >> {
     - mLogger : Logger_Facade
@@ -19,8 +19,8 @@ class Logger_SingletonManager << (M,66CCFF) Module >> {
     ==
     When the logger is loaded as an external add-in,
     VBA keeps its member variables alive even after a macro ends.
-    **The user should call ResetMyLogger() before initialization,**
-    **so that each session starts with a clean state.**
+    **Initialize() automatically resets the logger state,**
+    **so each session starts with a clean state.**
 }
 
 ' Logger API
