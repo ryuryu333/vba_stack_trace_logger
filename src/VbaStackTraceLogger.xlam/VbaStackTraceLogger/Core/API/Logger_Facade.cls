@@ -21,18 +21,13 @@ Private Const CLASS_NAME As String = "Logger_Facade"
 Private mController As Logger_Controller
 Private mIsInitialized As Boolean
 
-Private Sub Class_Initialize()
-    Set mController = New Logger_Controller
-End Sub
-
 ' === Logger initialization ===
 ' Processing order: User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
 Public Function Initialize() As Logger_ConfigBuilder
+    ' If already initialized, automatically reset and reinitialize
     If mIsInitialized Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "Logger is already initialized, second initialization cannot be executed"
-        Exit Function
+        Terminate
+        mIsInitialized = False
     End If
 
     ' Create configuration values using builder
@@ -43,14 +38,9 @@ Public Function Initialize() As Logger_ConfigBuilder
 End Function
 
 ' Processing order: User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
-Public Sub CompleteInitialization(ByRef userConfig As Logger_ConfigStruct)
-    If mIsInitialized Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "Logger is already initialized, second initialization cannot be executed"
-    End If
-    
+Friend Sub CompleteInitialization(ByRef userConfig As Logger_ConfigStruct)
     ' Initialize Controller using user-created configuration values
+    Set mController = New Logger_Controller
     mController.Initialize userConfig
     
     mIsInitialized = True
