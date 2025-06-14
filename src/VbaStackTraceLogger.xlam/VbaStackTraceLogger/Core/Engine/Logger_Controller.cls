@@ -8,65 +8,54 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_Controller.cls
-'@Folder("VbaStackTraceLogger.Core")
+'@Folder("VbaStackTraceLogger.Core.Engine")
 
 Option Explicit
+
+Implements Logger_IController
+Implements Logger_IConfigReceiver
+Implements Logger_ITraceLogOutput
 Private Const CLASS_NAME As String = "Logger_Controller"
 
-Private mStackTraceController As Logger_StackTraceController
-Private mLogInfoMetadataHelper As Logger_LogInfoMetadataHelper
-Private mWriterManager As Logger_WriterManager
-Private mOutputFilter As Logger_OutputFilter
-Private mLoggerConfig As Logger_ConfigStruct
+Private mStackTraceController As Logger_IStackTraceFacade
+Private mWriteLogController As Logger_IWriteLogController
+Private mOutputFilter As Logger_IOutputFilter
+Private mLoggerConfig As Logger_ConfigurationDTO
 Private mIsInitialized As Boolean
 
-Private Sub Class_Initialize()
-    Set mStackTraceController = New Logger_StackTraceController
-    Set mLogInfoMetadataHelper = New Logger_LogInfoMetadataHelper
-    Set mWriterManager = New Logger_WriterManager
-    Set mOutputFilter = New Logger_OutputFilter
-End Sub
-
 ' === Initialization processing ===
-Public Sub Initialize(ByRef userConfig As Logger_ConfigStruct)
-    ' === Validate each argument, then assign to member variables ===
-    ValidateConfig userConfig
-    Set mLoggerConfig = userConfig
-    ' === Initialize StackTraceController ===
-    mStackTraceController.Initialize userConfig.IsStackTraceEnabled, Me
+Private Sub Initialize()
+    ' Use configuration received from Logger_ConfigBuilder
+    ' === Create LoggerConfig ===
+    Set mOutputFilter = New Logger_OutputFilter
+
+    ' === Create and Initialize StackTraceController ===
+    Set mStackTraceController = New Logger_StackTraceController
+    mStackTraceController.Initialize mLoggerConfig.IsStackTraceEnabled, Me
     
     ' === Create and initialize Writers ===
-    mWriterManager.CreateWriters userConfig
-    mWriterManager.InitializeWriters
+    Dim writerFactory As Logger_WriterFactory
+    Set writerFactory = New Logger_WriterFactory
     
+    Dim writers As Collection
+    Set writers = writerFactory.CreateWriters(mLoggerConfig)
+    
+    Set mWriteLogController = New Logger_WriteLogController
+    mWriteLogController.Initialize writers
+    
+    ' Finish
     mIsInitialized = True
-End Sub
-
-' Execute dynamic validation, static validation is performed in Logger_ConfigBuilder
-Private Sub ValidateConfig(ByRef userConfig As Logger_ConfigStruct)
-    ' Validate Excel output settings
-    If userConfig.IsWriteToExcelSheet Then
-        ' Access Excel sheet and verify it's accessible
-        On Error Resume Next
-        Dim testValue As String
-        testValue = userConfig.OutputExcelSheet.Name
-        If Err.Number <> 0 Then
-            On Error GoTo 0
-            Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-                LOGGER_NAMESPACE & "." & CLASS_NAME & ".ValidateConfig", _
-                "Cannot access the specified Excel sheet"
-        End If
-        On Error GoTo 0
-    End If
 End Sub
 
 ' === Log output ===
 ' Write information to logInfo, then pass to Writer for log output
-Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As LoggerLogTag)
+Private Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As LoggerLogTag)
     EnsureInitialized
+
     ' === Based on logger settings, determine if log should be output ===
     If mOutputFilter.ShouldWriteLog(userSelectedTag, mLoggerConfig) = False Then Exit Sub
-    ' === Write information to logInfo ===
+    
+    ' === Get call path information ===
     Dim CallPath As String
     If mLoggerConfig.IsStackTraceEnabled Then
         CallPath = mStackTraceController.GetCurrentCallPath()
@@ -74,15 +63,12 @@ Public Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As Logge
         CallPath = ""
     End If
     
-    Dim logInfo As Logger_LogInfoStruct
-    Set logInfo = mLogInfoMetadataHelper.BuildLogInfo(writeMessage, userSelectedTag, mLoggerConfig, CallPath)
-    
-    ' === Command each Writer to output log ===
-    mWriterManager.WriteLogToAll logInfo
+    ' === Use WriteLogController to output log ===
+    mWriteLogController.WriteLogToAll writeMessage, userSelectedTag, CallPath
 End Sub
 
 ' === Stack trace ===
-Public Function UsingTracer(ByVal currentModuleName As String, _
+Private Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
     
@@ -90,16 +76,15 @@ Public Function UsingTracer(ByVal currentModuleName As String, _
     Set UsingTracer = mStackTraceController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
-
 ' === Termination processing ===
-Public Sub Terminate()
+Private Sub Terminate()
     EnsureInitialized
-      mWriterManager.TerminateWriters
+    mWriteLogController.Terminate
     mStackTraceController.Terminate
-    Set mLogInfoMetadataHelper = Nothing
     Set mStackTraceController = Nothing
-    Set mWriterManager = Nothing
+    Set mWriteLogController = Nothing
     Set mOutputFilter = Nothing
+    Set mLoggerConfig = Nothing
 End Sub
 
 ' Check if initialized
@@ -113,13 +98,39 @@ End Sub
 
 Private Sub Class_Terminate()
     ' Fail-safe
-    If Not mWriterManager Is Nothing Then
-        mWriterManager.TerminateWriters
-    End If
+    mWriteLogController.Terminate
+    mStackTraceController.Terminate
     Set mStackTraceController = Nothing
-    Set mLogInfoMetadataHelper = Nothing
-    Set mWriterManager = Nothing
+    Set mWriteLogController = Nothing
     Set mOutputFilter = Nothing
+    Set mLoggerConfig = Nothing
 End Sub
 
+' === Interface Implementations ===
+
+' Logger_IController implementation
+Private Sub Logger_IController_WriteLog(ByVal writeMessage As String, ByVal logTag As LoggerLogTag)
+    WriteLog writeMessage, logTag
+End Sub
+
+Private Function Logger_IController_UsingTracer(ByVal ModuleName As String, ByVal ProcedureName As String) As Logger_ProcedureTracer
+    Set Logger_IController_UsingTracer = UsingTracer(ModuleName, ProcedureName)
+End Function
+
+Private Sub Logger_IController_Terminate()
+    Terminate
+End Sub
+
+' Logger_IConfigReceiver implementation
+Private Sub Logger_IConfigReceiver_Initialize(ByVal config As Logger_ConfigurationDTO)
+    ' Recive configuration from Logger_ConfigBuilder
+    Set mLoggerConfig = config
+    ' start initialization
+    Initialize
+End Sub
+
+' Logger_ITraceLogOutput implementation
+Private Sub Logger_ITraceLogOutput_WriteTraceLog(ByVal writeMessage As String, ByVal logTag As LoggerLogTag)
+    WriteLog writeMessage, logTag
+End Sub
 

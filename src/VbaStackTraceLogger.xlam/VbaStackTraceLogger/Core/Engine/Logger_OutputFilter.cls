@@ -8,14 +8,16 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_OutputFilter.cls
-'@Folder("VbaStackTraceLogger.Core")
+'@Folder("VbaStackTraceLogger.Core.Engine")
 
 Option Explicit
+
+Implements Logger_IOutputFilter
 Private Const CLASS_NAME As String = "Logger_OutputFilter"
 
 ' === Log Output Filtering ===
 ' Determine whether log should be written based on configuration
-Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByRef config As Logger_ConfigStruct) As Boolean
+Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByRef config As Logger_ConfigurationDTO) As Boolean
     ShouldWriteLog = True
     
     ' If logging is disabled
@@ -38,3 +40,12 @@ Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByRef config A
         Next i
     End If
 End Function
+
+' === Interface Implementation ===
+
+' Logger_IOutputFilter implementation
+Private Function Logger_IOutputFilter_ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByVal config As Logger_ConfigurationDTO) As Boolean
+    ' Delegate to main method
+    Logger_IOutputFilter_ShouldWriteLog = ShouldWriteLog(selectedTag, config)
+End Function
+
