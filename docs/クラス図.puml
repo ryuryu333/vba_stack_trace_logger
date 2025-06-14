@@ -83,6 +83,8 @@ interface Logger_IOutputFilter {
 
 ' Create writers
 class Logger_WriterFactory implements Logger_IWriterFactory {
+    ==
+    Separated in anticipation of expanded functionality.
 }
 interface Logger_IWriterFactory {
     + CreateWriters(Logger_ConfigurationDTO) : Collection
@@ -298,7 +300,7 @@ Logger_ExcelOutputBuilder --> Logger_ConfigBuilder : set value \n return main bu
 Logger_TagFilterBuilder --> Logger_TagFilterBuilder : create \n tags array
 Logger_TagFilterBuilder --> Logger_ConfigBuilder : set value \n rreturn main builder
 ' === Core Logic ===
-Logger_Facade ---> Logger_IController : instantiate \n relay the user's commands
+Logger_Facade -----> Logger_IController : instantiate \n relay the user's commands
 Logger_Controller --> Logger_ConfigurationDTO : read config
 Logger_Controller --> Logger_IWriterFactory
 Logger_Controller --> Logger_IOutputFilter
@@ -308,11 +310,12 @@ Logger_Controller --> Logger_IWriteLogController : delegate write logic
 ' === Write ===
 ' Factory
 Logger_WriterFactory --> Logger_ConfigurationDTO : read comfig
+Logger_WriterFactory --> Logger_ILogWriter : create
 ' Log info construction
 Logger_WriteLogController --> Logger_LogWriteRequestDTO : create & write log info
 Logger_WriteLogController --> Logger_ILogMetadataProvider
 ' Writers
-Logger_WriteLogController --> Logger_ILogWriter
+Logger_WriteLogController --> Logger_ILogWriter : use
 Logger_Writer_Excel --> Logger_LogWriteRequestDTO : read log info
 Logger_Writer_Immediate --> Logger_LogWriteRequestDTO : read log info
 ' === stack trace ===
