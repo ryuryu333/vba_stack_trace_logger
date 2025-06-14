@@ -89,7 +89,7 @@ Private Sub EnsureBuild()
     If Not mIsBuilt Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureBuild", _
-            "Logger initialization is not complete. Call Build() to finalize configuration."
+            "Logger initialization is not complete. Call Build()"
     End If
 End Sub
 
