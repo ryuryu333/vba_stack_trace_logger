@@ -78,7 +78,7 @@ class Logger_OutputFilter implements Logger_IOutputFilter {
     Separated in anticipation of expanded functionality.
 }
 interface Logger_IOutputFilter {
-    + ShouldWriteLog() : Boolean
+    + ShouldWriteLog(LoggerLogTag, Logger_ConfigurationDTO) : Boolean
 }
 
 ' Create writers
@@ -97,6 +97,7 @@ package "Log Writers" {
     }
     class Logger_Writer_Excel implements Logger_ILogWriter {
         - mOutputSheet : Worksheet
+        - mCurrentRow : Long
         + SetTargetSheet(Worksheet)
     }
     class Logger_Writer_Immediate implements Logger_ILogWriter {
@@ -106,6 +107,7 @@ package "Log Writers" {
 ' Writer logic - extracted from Controller
 class Logger_WriteLogController implements Logger_IWriteLogController {
     - mWriters : Collection
+    - mLogMetadataProvider : Logger_ILogMetadataProvider
 }
 interface Logger_IWriteLogController {
     + Initialize(Collection Writers)
@@ -146,7 +148,7 @@ package "Config Builders" {
     ' Main builder
     class Logger_ConfigBuilder implements Logger_IConfigBuilder {
         - mConfig : Logger_ConfigurationDTO
-        - mCompleter: Logger_IConfigReceiver
+        - mReceiver: Logger_IConfigReceiver
         - mIsBuilt : Boolean
         --
         + DisableLogging() : Logger_ConfigBuilder
@@ -200,6 +202,7 @@ package "Config Builders" {
         If user do **NOT** call Add() **before** Apply(), call **Err.Raise**.
     }
 }
+
 ' Write by builders, read by Controller
 class Logger_ConfigurationDTO {
     - pIsLoggingEnabled : Boolean
@@ -218,8 +221,8 @@ class Logger_ConfigurationDTO {
 package "StackTrace" {
     ' Stack trace management - extracted from Controller
     class Logger_StackTraceController implements Logger_IStackTraceFacade, Logger_IStackTraceEventHandler {
-        - mCallStackManager : Logger_ICallStack
-        - mProcedureTracerProvider : Logger_IProcedureTracerProvider
+        - mCallStack : Logger_ICallStack
+        - mTraceLogOutput : Logger_ITraceLogOutput
         - mIsStackTraceEnabled : Boolean
         - mIsInitialized : Boolean
         --
@@ -263,6 +266,8 @@ package "StackTrace" {
     '         -> At that time (= destructor), this class notifies the end-of-procedure event.
     class Logger_ProcedureTracer {
         - mCallSite : String
+        - mStackTraceEventHandler : Logger_IStackTraceEventHandler
+        - mIsInitialized : Boolean
         + Initialize(ModuleName, ProcedureName
         , Logger_IStackTraceEventHandler)
         - Class_Terminate()
@@ -281,7 +286,7 @@ package "StackTrace" {
 Logger_EntryPoint --> Logger_Facade : instantiate
 ' === Logger Initilize & build config ===
 Logger_Facade --> Logger_IConfigBuilder : start the builder method chain
-Logger_ConfigBuilder --> Logger_ConfigurationDTO : create & write config
+Logger_ConfigBuilder --> Logger_ConfigurationDTO : create & write config & call validate
 Logger_ConfigBuilder --> Logger_IConfigReceiver : call buck to receiver
 ' Main builder
 Logger_ConfigBuilder --> Logger_ExcelOutputBuilder : set enabled
@@ -294,9 +299,10 @@ Logger_TagFilterBuilder --> Logger_TagFilterBuilder : create \n tags array
 Logger_TagFilterBuilder --> Logger_ConfigBuilder : set value \n rreturn main builder
 ' === Core Logic ===
 Logger_Facade ---> Logger_IController : instantiate \n relay the user's commands
-Logger_Controller --> Logger_ConfigurationDTO : call validate & read config
+Logger_Controller --> Logger_ConfigurationDTO : read config
 Logger_Controller --> Logger_IWriterFactory
 Logger_Controller --> Logger_IOutputFilter
+Logger_OutputFilter --> Logger_ConfigurationDTO : read config
 Logger_Controller --> Logger_IStackTraceFacade : delegate stack trace logic
 Logger_Controller --> Logger_IWriteLogController : delegate write logic
 ' === Write ===
