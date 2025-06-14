@@ -80,7 +80,8 @@ End Sub
 
 ' Finalize configuration and call initialization
 Public Sub Build()
-    EnsureInitialized
+    EnsureInitialized ' Check this instance is initialized
+    mConfig.Validate ' Validate configuration values
     mIsBuilt = True
     mReceiver.Initialize mConfig
 End Sub
