@@ -14,28 +14,16 @@ Option Explicit
 Implements Logger_ILogWriter
 
 Private Sub Logger_ILogWriter_Initialize()
-    Debug.Print "イミディエイトウィンドウ用のロガーを初期化しました"
+    Debug.Print "Finished initializing Immediate Window writer."
 End Sub
 
-Private Sub Logger_ILogWriter_WriteLog(logInfo As Logger_LogInfoStruct)
-    Dim outputContext As String
-    
-    If logInfo.IsStackTraceEnabled Then
-        If Len(logInfo.CallPath) > 0 Then
-            outputContext = "[" & logInfo.CallPath & "]"
-        Else
-            outputContext = ""
-        End If
-    Else
-        outputContext = ""
-    End If
-
-    Debug.Print "[" & logInfo.Timestamp & "]" & _
-                "[" & logInfo.TagName & "]" & _
-                IIf(Len(outputContext) > 0, " " & outputContext, "") & _
-                IIf(Len(logInfo.Message) > 0, " " & logInfo.Message, "")
+Private Sub Logger_ILogWriter_WriteLog(logRequest As Logger_LogWriteRequestDTO)
+    Debug.Print "[" & logRequest.Timestamp & "]" & _
+                "[" & logRequest.TagName & "]" & _
+                IIf(Len(logRequest.CallPath) > 0, "[" & logRequest.CallPath & "]", "") & _
+                IIf(Len(logRequest.Message) > 0, " " & logRequest.Message, "")
 End Sub
 
 Private Sub Logger_ILogWriter_Terminate()
-    ' 特になし
+    ' Nnothing to do for Immediate Window writer
 End Sub

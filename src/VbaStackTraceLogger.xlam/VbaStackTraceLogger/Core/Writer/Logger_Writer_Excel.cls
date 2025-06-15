@@ -71,17 +71,7 @@ Private Sub Logger_ILogWriter_WriteLog(logRequest As Logger_LogWriteRequestDTO)
         .Cells(mCurrentRow, ColumnType.ColTimestamp).value = logRequest.Timestamp
         .Cells(mCurrentRow, ColumnType.ColTimestamp).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
         .Cells(mCurrentRow, ColumnType.ColTag).value = logRequest.TagName
-
-        If logRequest.IsStackTraceEnabled Then
-            If Len(logRequest.CallPath) > 0 Then
-                .Cells(mCurrentRow, ColumnType.ColCallPath).value = logRequest.CallPath
-            Else
-                .Cells(mCurrentRow, ColumnType.ColCallPath).value = ""
-            End If
-        Else
-            .Cells(mCurrentRow, ColumnType.ColCallPath3).value = ""
-        End If
-
+        .Cells(mCurrentRow, ColumnType.ColCallPath).value = logRequest.CallPath
         .Cells(mCurrentRow, ColumnType.ColMessage).value = logRequest.Message
         
         ' Set background color based on tag type

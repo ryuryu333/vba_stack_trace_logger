@@ -9,14 +9,19 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_ILogWriter.cls
 '@Folder("VbaStackTraceLogger.Core.Writer")
+'@Interface
+'@ModuleDescription("Interface for Log Writer")
 
 Option Explicit
 
+'@Description("Initialize the log writer")
 Public Sub Initialize()
 End Sub
 
-Public Sub WriteLog(logInfo As Logger_LogInfoStruct)
+'@Description("Write log using DTO")
+Public Sub WriteLog(ByVal logRequest As Logger_LogWriteRequestDTO)
 End Sub
 
+'@Description("Terminate the log writer")
 Public Sub Terminate()
 End Sub
