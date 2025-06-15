@@ -82,6 +82,7 @@ End Sub
 Public Sub Build()
     EnsureInitialized ' Check this instance is initialized
     mConfig.Validate ' Validate configuration values
+    mConfig.MarkAsFinalized ' After this, configuration cannot be changed
     mIsBuilt = True
     mReceiver.Initialize mConfig
 End Sub

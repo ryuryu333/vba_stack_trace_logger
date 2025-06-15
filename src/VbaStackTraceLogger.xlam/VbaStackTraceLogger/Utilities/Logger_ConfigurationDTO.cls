@@ -9,10 +9,15 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Attribute VB_Description = "Data Transfer Object for Logger Configuration"
 '@Folder("VbaStackTraceLogger.Utilities")
-'@ModuleDescription("Data Transfer Object for Logger Configuration")
+
 Option Explicit
 
-' Private fields
+Private Const CLASS_NAME As String = "Logger_ConfigurationDTO"
+
+' This class is used to store configuration settings for the logger.
+' Builder class set prperties, call Validate() and MarkAsFinalized().
+' After that, Builder class send the instance to Controller class.
+' NOTE : VBA does not support immutable classes, so this class is mutable.
 Private pIsLoggingEnabled As Boolean
 Private pIsTagFilteringEnabled As Boolean
 Private pExcludedTags() As LoggerLogTag
@@ -21,57 +26,77 @@ Private pIsWriteToImmediate As Boolean
 Private pIsWriteToExcelSheet As Boolean
 Private pOutputExcelSheet As Worksheet
 
-Public Property Get IsLoggingEnabled() As Boolean
+Private mIsFinalized As Boolean
+
+Friend Property Get IsLoggingEnabled() As Boolean
     IsLoggingEnabled = pIsLoggingEnabled
 End Property
-Public Property Let IsLoggingEnabled(ByVal value As Boolean)
+Friend Property Let IsLoggingEnabled(ByVal value As Boolean)
+    VerifySetAllowed
     pIsLoggingEnabled = value
 End Property
 
-Public Property Get IsTagFilteringEnabled() As Boolean
+Friend Property Get IsTagFilteringEnabled() As Boolean
     IsTagFilteringEnabled = pIsTagFilteringEnabled
 End Property
-Public Property Let IsTagFilteringEnabled(ByVal value As Boolean)
+Friend Property Let IsTagFilteringEnabled(ByVal value As Boolean)
+    VerifySetAllowed
     pIsTagFilteringEnabled = value
 End Property
 
-Public Property Get ExcludedTags() As LoggerLogTag()
+Friend Property Get ExcludedTags() As LoggerLogTag()
     ExcludedTags = pExcludedTags
 End Property
-Public Property Let ExcludedTags(ByRef value() As LoggerLogTag)
+Friend Property Let ExcludedTags(ByRef value() As LoggerLogTag)
+    VerifySetAllowed
     pExcludedTags = value
 End Property
 
-Public Property Get IsStackTraceEnabled() As Boolean
+Friend Property Get IsStackTraceEnabled() As Boolean
     IsStackTraceEnabled = pIsStackTraceEnabled
 End Property
-Public Property Let IsStackTraceEnabled(ByVal value As Boolean)
+Friend Property Let IsStackTraceEnabled(ByVal value As Boolean)
+    VerifySetAllowed
     pIsStackTraceEnabled = value
 End Property
 
-Public Property Get IsWriteToImmediate() As Boolean
+Friend Property Get IsWriteToImmediate() As Boolean
     IsWriteToImmediate = pIsWriteToImmediate
 End Property
-Public Property Let IsWriteToImmediate(ByVal value As Boolean)
+Friend Property Let IsWriteToImmediate(ByVal value As Boolean)
+    VerifySetAllowed
     pIsWriteToImmediate = value
 End Property
 
-Public Property Get IsWriteToExcelSheet() As Boolean
+Friend Property Get IsWriteToExcelSheet() As Boolean
     IsWriteToExcelSheet = pIsWriteToExcelSheet
 End Property
-Public Property Let IsWriteToExcelSheet(ByVal value As Boolean)
+Friend Property Let IsWriteToExcelSheet(ByVal value As Boolean)
+    VerifySetAllowed
     pIsWriteToExcelSheet = value
 End Property
 
-Public Property Get OutputExcelSheet() As Worksheet
+Friend Property Get OutputExcelSheet() As Worksheet
     Set OutputExcelSheet = pOutputExcelSheet
 End Property
-Public Property Set OutputExcelSheet(ByVal value As Worksheet)
+Friend Property Set OutputExcelSheet(ByVal value As Worksheet)
+    VerifySetAllowed
     Set pOutputExcelSheet = value
 End Property
 
-' Validate configuration settings
-Public Sub Validate()
+Private Sub VerifySetAllowed()
+    If mIsFinalized Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureFinalized", _
+            "Unexpected error. After build configuration, cannot set any properties."
+    End If
+End Sub
+
+Friend Sub MarkAsFinalized()
+    mIsFinalized = True
+End Sub
+
+Friend Sub Validate()
     If IsTagFilteringEnabled Then
         ' ExcludedTags must be set by the builder.
         If ExcludedTags Is Nothing Then
