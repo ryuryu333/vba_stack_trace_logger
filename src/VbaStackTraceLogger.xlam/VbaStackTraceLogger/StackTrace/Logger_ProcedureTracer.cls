@@ -10,31 +10,37 @@ Attribute VB_Exposed = False
 ' Logger_ProcedureTracer.cls
 '@Folder("VbaStackTraceLogger.StackTrace")
 
-' Mimics RAII pattern, updates stack trace information tied to lifecycle
-' Class used as variable
+' Automatically tracks procedure entry and exit
+' NOTE:
+'  This is based on the RAII (Resource Acquisition Is Initialization) concept.
+'  User stores an instance of this class as a variable at the beginning of the procedure.
+'    e.g. Dim scopeGuard As Variant: Set scopeGuard = MyLogger.UsingTracer("ModuleName", "ProcedureName")
+'  By calling UsingTracer(), the instance is created and initialized internally.
+'    -> At that time (= constructor), this class notifies the start-of-procedure event.
+'  When the user's procedure ends, the reference to the variable drops to zero,
+'  and the variable is automatically destroyed by the system.
+'    -> At that time (= destructor), this class notifies the end-of-procedure event.
+
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_ProcedureTracer"
 
 Private mCallSite As String
-
-Private mStackTraceController As Logger_StackTraceController
+Private mStackTraceEventHandler As Logger_IStackTraceEventHandler
 Private mIsInitialized As Boolean
 
 ' Initialization is instructed after instantiation
-' Substitute for parameterized constructor
 Public Sub Initialize(ByVal currentModuleName As String, ByVal currentProcedureName As String, _
-                      ByRef stackTraceController As Logger_StackTraceController)
-    If stackTraceController Is Nothing Then
+                      ByVal stackTraceEventHandler As Logger_IStackTraceEventHandler)
+    If stackTraceEventHandler Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Initialize", _
-            "StackTraceController instance not found"
+            "Unexpected error. StackTraceEventHandler instance not found"
     End If
-    
-    Set mStackTraceController = stackTraceController
+    Set mStackTraceEventHandler = stackTraceEventHandler
     mCallSite = currentModuleName & "." & currentProcedureName
     
-    ' Notify procedure entry to StackTraceController
-    mStackTraceController.NotifyProcedureEnter mCallSite
+    ' Notify procedure entry to StackTraceEventHandler
+    mStackTraceEventHandler.OnProcedureEnter mCallSite
     
     mIsInitialized = True
 End Sub
@@ -44,14 +50,14 @@ Private Sub Class_Terminate()
     If mIsInitialized = False Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Class_Terminate", _
-            "Cleanup called without initialization"
+            "Unexpected error. Destructor called without initialization"
     End If
     
-    ' Notify procedure exit to StackTraceController
-    mStackTraceController.NotifyProcedureExit mCallSite
+    ' Notify procedure exit to StackTraceEventHandler
+    mStackTraceEventHandler.OnProcedureExit
     
     ' Release resources
-    Set mStackTraceController = Nothing
+    Set mStackTraceEventHandler = Nothing
 End Sub
 
 
