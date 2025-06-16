@@ -18,70 +18,70 @@ Private Const CLASS_NAME As String = "Logger_ConfigurationDTO"
 ' Builder class set prperties, call Validate() and MarkAsFinalized().
 ' After that, Builder class send the instance to Controller class.
 ' NOTE : VBA does not support immutable classes, so this class is mutable.
-Private pIsLoggingEnabled As Boolean
-Private pIsTagFilteringEnabled As Boolean
-Private pExcludedTags() As LoggerLogTag
-Private pIsStackTraceEnabled As Boolean
-Private pIsWriteToImmediate As Boolean
-Private pIsWriteToExcelSheet As Boolean
-Private pOutputExcelSheet As Worksheet
+Private mIsLoggingEnabled As Boolean
+Private mIsTagFilteringEnabled As Boolean
+Private mExcludedTags() As LoggerLogTag
+Private mIsStackTraceEnabled As Boolean
+Private mIsWriteToImmediate As Boolean
+Private mIsWriteToExcelSheet As Boolean
+Private mOutputExcelSheet As Worksheet
 
 Private mIsFinalized As Boolean
 
 Friend Property Get IsLoggingEnabled() As Boolean
-    IsLoggingEnabled = pIsLoggingEnabled
+    IsLoggingEnabled = mIsLoggingEnabled
 End Property
 Friend Property Let IsLoggingEnabled(ByVal value As Boolean)
     VerifySetAllowed
-    pIsLoggingEnabled = value
+    mIsLoggingEnabled = value
 End Property
 
 Friend Property Get IsTagFilteringEnabled() As Boolean
-    IsTagFilteringEnabled = pIsTagFilteringEnabled
+    IsTagFilteringEnabled = mIsTagFilteringEnabled
 End Property
 Friend Property Let IsTagFilteringEnabled(ByVal value As Boolean)
     VerifySetAllowed
-    pIsTagFilteringEnabled = value
+    mIsTagFilteringEnabled = value
 End Property
 
 Friend Property Get ExcludedTags() As LoggerLogTag()
-    ExcludedTags = pExcludedTags
+    ExcludedTags = mExcludedTags
 End Property
 Friend Property Let ExcludedTags(ByRef value() As LoggerLogTag)
     VerifySetAllowed
-    pExcludedTags = value
+    mExcludedTags = value
 End Property
 
 Friend Property Get IsStackTraceEnabled() As Boolean
-    IsStackTraceEnabled = pIsStackTraceEnabled
+    IsStackTraceEnabled = mIsStackTraceEnabled
 End Property
 Friend Property Let IsStackTraceEnabled(ByVal value As Boolean)
     VerifySetAllowed
-    pIsStackTraceEnabled = value
+    mIsStackTraceEnabled = value
 End Property
 
 Friend Property Get IsWriteToImmediate() As Boolean
-    IsWriteToImmediate = pIsWriteToImmediate
+    IsWriteToImmediate = mIsWriteToImmediate
 End Property
 Friend Property Let IsWriteToImmediate(ByVal value As Boolean)
     VerifySetAllowed
-    pIsWriteToImmediate = value
+    mIsWriteToImmediate = value
 End Property
 
 Friend Property Get IsWriteToExcelSheet() As Boolean
-    IsWriteToExcelSheet = pIsWriteToExcelSheet
+    IsWriteToExcelSheet = mIsWriteToExcelSheet
 End Property
 Friend Property Let IsWriteToExcelSheet(ByVal value As Boolean)
     VerifySetAllowed
-    pIsWriteToExcelSheet = value
+    mIsWriteToExcelSheet = value
 End Property
 
 Friend Property Get OutputExcelSheet() As Worksheet
-    Set OutputExcelSheet = pOutputExcelSheet
+    Set OutputExcelSheet = mOutputExcelSheet
 End Property
 Friend Property Set OutputExcelSheet(ByVal value As Worksheet)
     VerifySetAllowed
-    Set pOutputExcelSheet = value
+    Set mOutputExcelSheet = value
 End Property
 
 Private Sub VerifySetAllowed()
