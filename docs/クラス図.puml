@@ -78,7 +78,7 @@ class Logger_OutputFilter implements Logger_IOutputFilter {
     Separated in anticipation of expanded functionality.
 }
 interface Logger_IOutputFilter {
-    + ShouldWriteLog(LoggerLogTag, Logger_ConfigurationDTO) : Boolean
+    + ShouldWriteLog(LoggerLogTag, configIsLoggingEnabled, configIsTagFilteringEnabled, configExcludedTags) : Boolean
 }
 
 ' Create writers
@@ -87,7 +87,7 @@ class Logger_WriterFactory implements Logger_IWriterFactory {
     Separated in anticipation of expanded functionality.
 }
 interface Logger_IWriterFactory {
-    + CreateWriters(Logger_ConfigurationDTO) : Collection
+    + CreateWriters(configIsWriteToImmediate, configIsWriteToExcelSheet, configOutputExcelSheet) : Collection
 }
 
 package "Log Writers" {
@@ -210,7 +210,6 @@ class Logger_ConfigurationDTO {
     - pIsLoggingEnabled : Boolean
     - pIsTagFilteringEnabled : Boolean
     - pExcludedTags : LoggerLogTag Array
-    - pIsStackTraceEnabled : Boolean
     - pIsWriteToImmediate : Boolean
     - pIsWriteToExcelSheet : Boolean
     - pOutputExcelSheet : Worksheet
@@ -218,6 +217,8 @@ class Logger_ConfigurationDTO {
     ~ Setter()
     ~ Getter()
     ~ Validate()
+    ~ MarkAsFinalized()
+    - VerifySetAllowed()
 }
 
 package "StackTrace" {
@@ -288,7 +289,7 @@ package "StackTrace" {
 Logger_EntryPoint --> Logger_Facade : instantiate
 ' === Logger Initilize & build config ===
 Logger_Facade --> Logger_IConfigBuilder : start the builder method chain
-Logger_ConfigBuilder --> Logger_ConfigurationDTO : create & write config & call validate
+Logger_ConfigBuilder --> Logger_ConfigurationDTO : create & write config \n call \n Validate() \n MarkAsFinalized()
 Logger_ConfigBuilder --> Logger_IConfigReceiver : call buck to receiver
 ' Main builder
 Logger_ConfigBuilder --> Logger_ExcelOutputBuilder : set enabled
@@ -304,12 +305,10 @@ Logger_Facade -----> Logger_IController : instantiate \n relay the user's comman
 Logger_Controller --> Logger_ConfigurationDTO : read config
 Logger_Controller --> Logger_IWriterFactory
 Logger_Controller --> Logger_IOutputFilter
-Logger_OutputFilter --> Logger_ConfigurationDTO : read config
 Logger_Controller --> Logger_IStackTraceFacade : delegate stack trace logic
 Logger_Controller --> Logger_IWriteLogController : delegate write logic
 ' === Write ===
 ' Factory
-Logger_WriterFactory --> Logger_ConfigurationDTO : read comfig
 Logger_WriterFactory --> Logger_ILogWriter : create
 ' Log info construction
 Logger_WriteLogController --> Logger_LogWriteRequestDTO : create & write log info
