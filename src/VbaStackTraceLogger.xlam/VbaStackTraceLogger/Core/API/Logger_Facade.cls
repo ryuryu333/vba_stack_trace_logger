@@ -26,18 +26,23 @@ Public Function StartConfiguration() As Logger_ConfigBuilder
         Terminate
         mIsInitialized = False
     End If
-
-    ' Create a new controller instance
-    Set mController = New Logger_Controller
+    
+    ' Create concrete class instance
+    Dim concreteController As New Logger_Controller ' Used by Facade & Builder
+    Dim concreteConfigBuilder As New Logger_ConfigBuilder
+    
+    ' Set member variable
+    Set mController = concreteController
 
     ' Preparation builder
-    Dim configBuilder As New Logger_ConfigBuilder
+    Dim configBuilder As Logger_IConfigBuilder
+    Set configBuilder = concreteConfigBuilder
 
     ' Set call back receiver
     Dim receiver As Logger_IConfigReceiver
-    Set receiver = mController
+    Set receiver = concreteController
     configBuilder.Initialize receiver
-    
+
     ' Finish
     mIsInitialized = True
     Set StartConfiguration = configBuilder

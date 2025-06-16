@@ -17,7 +17,7 @@ Private Sub Logger_ILogWriter_Initialize()
     Debug.Print "Finished initializing Immediate Window writer."
 End Sub
 
-Private Sub Logger_ILogWriter_WriteLog(logRequest As Logger_LogWriteRequestDTO)
+Private Sub Logger_ILogWriter_WriteLog(ByVal logRequest As Logger_LogWriteRequestDTO)
     Debug.Print "[" & logRequest.Timestamp & "]" & _
                 "[" & logRequest.TagName & "]" & _
                 IIf(Len(logRequest.CallPath) > 0, "[" & logRequest.CallPath & "]", "") & _

@@ -29,7 +29,6 @@ Friend Sub SetParentBuilder(ByVal parent As Logger_ConfigBuilder)
 End Sub
 
 Public Function Add(ByVal tag As LoggerLogTag) As Logger_TagFilterBuilder
-    EnsureAdd
     mCount = mCount + 1
     ReDim Preserve mTags(1 To mCount)
     mTags(mCount) = tag

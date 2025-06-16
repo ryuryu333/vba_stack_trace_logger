@@ -80,7 +80,6 @@ End Sub
 
 ' Finalize configuration and call initialization
 Public Sub Build()
-    EnsureInitialized ' Check this instance is initialized
     mConfig.Validate ' Validate configuration values
     mConfig.MarkAsFinalized ' After this, configuration cannot be changed
     mIsBuilt = True
@@ -99,24 +98,14 @@ Private Sub Class_Terminate()
     EnsureBuild
 End Sub
 
-' Ensure initialized before operations
-Private Sub EnsureInitialized()
-    If Not mIsInitialized Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
-            "Unexpected error. Not initialized."
-    End If
-End Sub
-
 ' === Interface Implementation ===
 
 ' Logger_IConfigBuilder implementation
 Private Sub Logger_IConfigBuilder_Initialize(ByVal configReceiver As Logger_IConfigReceiver)
-    If configReceiver is Nothing Then
+    If configReceiver Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Logger_IConfigBuilder_Initialize", _
             "Unexpected error. configReceiver is Nothing."
     End If
     Set mReceiver = configReceiver
-    mIsInitialized = True
 End Sub

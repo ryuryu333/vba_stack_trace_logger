@@ -20,16 +20,16 @@ Private mTimestamp As String
 Private mCallPath As String
 
 ' As an alternative to a parameterized constructor
-Friend Sub Initialize(ByVal message As String, _
-                    ByVal tagType As LoggerLogTag, _
-                    ByVal tagName As String, _
-                    ByVal timestamp As String, _
-                    ByVal callPath As String)
-    mMessage = message
-    mTagType = tagType
-    mTagName = tagName
-    mTimestamp = timestamp
-    mCallPath = callPath
+Friend Sub Initialize(ByVal Message As String, _
+                    ByVal TagType As LoggerLogTag, _
+                    ByVal TagName As String, _
+                    ByVal Timestamp As String, _
+                    ByVal CallPath As String)
+    mMessage = Message
+    mTagType = TagType
+    mTagName = TagName
+    mTimestamp = Timestamp
+    mCallPath = CallPath
 End Sub
 
 ' Property: Message

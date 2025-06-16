@@ -13,8 +13,10 @@ Attribute VB_Exposed = False
 Option Explicit
 Implements Logger_ILogWriter
 
+Private Const CLASS_NAME As String = "Logger_ExcelWriter"
+
 ' If logger functions are changed, update thins Eunum
-private Enum ColumnType
+Private Enum ColumnType
     ColTimestamp = 1
     ColTag = 2
     ColCallPath = 3
@@ -32,7 +34,7 @@ End Sub
 Private Sub Logger_ILogWriter_Initialize()
     Debug.Print "Initializing Excel writer..."
 
-    If mOutputSheet is Nothing Then
+    If mOutputSheet Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".Logger_ILogWriter_Initialize", _
             "Unexpected error. mOutputSheet is Nothing."
@@ -65,7 +67,7 @@ Private Sub Logger_ILogWriter_Initialize()
     Debug.Print "Finished initializing Excel writer."
 End Sub
 
-Private Sub Logger_ILogWriter_WriteLog(logRequest As Logger_LogWriteRequestDTO)
+Private Sub Logger_ILogWriter_WriteLog(ByVal logRequest As Logger_LogWriteRequestDTO)
     With mOutputSheet
         ' Write log data to the current row
         .Cells(mCurrentRow, ColumnType.ColTimestamp).value = logRequest.Timestamp

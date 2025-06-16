@@ -102,8 +102,8 @@ End Sub
 
 Private Sub Class_Terminate()
     ' Fail-safe
-    mWriteLogController.Terminate
-    mStackTraceController.Terminate
+    If Not mWriteLogController Is Nothing Then mWriteLogController.Terminate
+    If Not mStackTraceController Is Nothing Then mStackTraceController.Terminate
     Set mStackTraceController = Nothing
     Set mWriteLogController = Nothing
     Set mOutputFilter = Nothing

@@ -38,7 +38,7 @@ Public Sub Initialize(ByVal writers As Collection)
 End Sub
 
 '@Description("Write log message to all writers")
-Public Sub WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLogTag, ByVal callPath As String)
+Public Sub WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLogTag, ByVal CallPath As String)
     If mWriters Is Nothing Then Exit Sub
     If mWriters.Count = 0 Then Exit Sub
     
@@ -51,8 +51,7 @@ Public Sub WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLog
         .TagType = logTag
         .TagName = mLogMetadataProvider.GetTagName(logTag)
         .Timestamp = mLogMetadataProvider.GetTimeStamp
-        .IsStackTraceEnabled = (Len(callPath) > 0)
-        .CallPath = callPath
+        .CallPath = CallPath
     End With
     
     ' Send to all writers
@@ -80,8 +79,8 @@ Private Sub Logger_IWriteLogController_Initialize(ByVal writers As Collection)
     Initialize writers
 End Sub
 
-Private Sub Logger_IWriteLogController_WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLogTag, ByVal callPath As String)
-    WriteLogToAll writeMessage, logTag, callPath
+Private Sub Logger_IWriteLogController_WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLogTag, ByVal CallPath As String)
+    WriteLogToAll writeMessage, logTag, CallPath
 End Sub
 
 Private Sub Logger_IWriteLogController_Terminate()

@@ -21,6 +21,11 @@ End Sub
 Public Sub ExitProcedure()
 End Sub
 
+'@Description("Get current call Site as string")
+Public Function GetCurrentCallSite() As String
+End Function
+
 '@Description("Get current call path as string")
 Public Function GetCurrentCallPath() As String
 End Function
+

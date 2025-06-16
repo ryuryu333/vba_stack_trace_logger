@@ -62,12 +62,11 @@ Private Function CreateTracer(ByVal ModuleName As String, ByVal ProcedureName As
     tracer.Initialize ModuleName, ProcedureName, Me
     Set CreateTracer = tracer
 End Function
-End Function
 
 ' === Get current call path ===
 Private Function GetCurrentCallPath() As String
     EnsureInitialized
-    GetCurrentCallPath = mCallStackManager.GetCurrentCallPath()
+    GetCurrentCallPath = mCallStack.GetCurrentCallPath()
 End Function
 
 ' === Callback from ProcedureTracer ===
@@ -94,13 +93,11 @@ Private Sub OnProcedureExit()
     EnsureInitialized
     
     ' 1. Get current call site before exit
-    Dim currentCallPath As String
-    currentCallPath = mCallStack.GetCurrentCallPath
+    Dim currentCallSite As String
+    currentCallSite = mCallStack.GetCurrentCallSite
     
     ' 2. Request log output
-    If Len(currentCallPath) > 0 Then
-        mTraceLogOutput.WriteTraceLog "<< Exit " & currentCallPath, LogTag_Trace
-    End If
+    mTraceLogOutput.WriteTraceLog "<< Exit " & currentCallSite, LogTag_Trace
     
     ' 3. Update call stack
     mCallStack.ExitProcedure
@@ -126,9 +123,8 @@ End Sub
 
 Private Sub Class_Terminate()
     ' Fail-safe
-    Set mCallStackManager = Nothing
-    Set mProcedureTracerProvider = Nothing
-    Set mMainController = Nothing
+    Set mCallStack = Nothing
+    Set mTraceLogOutput = Nothing
 End Sub
 
 ' === Interface Implementations ===

@@ -21,7 +21,7 @@ Friend Sub SetParentBuilder(ByVal parent As Logger_ConfigBuilder)
 End Sub
 
 Public Function SetOutputExcelSheet(ByVal sheet As Worksheet) As Logger_ConfigBuilder
-    If mParentBuilder is Nothing Then
+    If mParentBuilder Is Nothing Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".SetOutputExcelSheet", _
             "Unexpected error. mParentBuilder is Nothing."

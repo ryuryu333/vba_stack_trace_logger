@@ -99,11 +99,6 @@ End Sub
 Friend Sub Validate()
     If IsTagFilteringEnabled Then
         ' ExcludedTags must be set by the builder.
-        If ExcludedTags Is Nothing Then
-            Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-                LOGGER_NAMESPACE & "." & CLASS_NAME & ".Validate", _
-                "Unexpected error. ExcludedTags is Nothing."
-        End If
         On Error Resume Next
         Dim boundCheck As Long
         boundCheck = LBound(ExcludedTags) ' If not array, this will raise an error
@@ -125,7 +120,7 @@ Friend Sub Validate()
         ' Check for duplicates in ExcludedTags
         Dim tagDict As Object
         Set tagDict = CreateObject("Scripting.Dictionary")
-        Dim tag As LoggerLogTag
+        Dim tag As Variant
         Dim isDuplicate As Boolean
         isDuplicate = False
         For Each tag In ExcludedTags
@@ -138,8 +133,8 @@ Friend Sub Validate()
         If isDuplicate Then
             Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
                 LOGGER_NAMESPACE & "." & CLASS_NAME & ".Validate", _
-                "ExcludedTags have duplicate tags." _&
-                " Please ensure that each tag is unique."
+                "ExcludedTags have duplicate tags." _
+                & "Please ensure that each tag is unique."
         End If
     End If
 
@@ -162,6 +157,6 @@ Friend Sub Validate()
                 "Please ensure that the OutputExcelSheet is accessible."
         End If
         On Error GoTo 0
-    End If    
+    End If
 End Sub
 

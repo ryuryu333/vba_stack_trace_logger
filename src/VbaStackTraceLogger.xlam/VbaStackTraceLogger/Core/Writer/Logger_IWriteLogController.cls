@@ -18,7 +18,7 @@ Public Sub Initialize(ByVal writers As Collection)
 End Sub
 
 '@Description("Write log message to all writers")
-Public Sub WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLogTag, ByVal callPath As String)
+Public Sub WriteLogToAll(ByVal writeMessage As String, ByVal logTag As LoggerLogTag, ByVal CallPath As String)
 End Sub
 
 '@Description("Terminate all writers")

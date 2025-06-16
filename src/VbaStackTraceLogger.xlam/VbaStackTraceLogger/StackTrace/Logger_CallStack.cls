@@ -58,6 +58,14 @@ Private Sub ExitProcedure()
     ValidateCallStack
 End Sub
 
+Private Function GetCurrentCallSite() As String
+    If mCallNestLevel = 0 Then
+        GetCurrentCallSite = ""
+    Else
+        GetCurrentCallSite = mCallSite(mCallNestLevel)
+    End If
+End Function
+
 Private Function GetCurrentCallPath() As String
     If mCallNestLevel = 0 Then
         GetCurrentCallPath = ""
@@ -67,15 +75,22 @@ Private Function GetCurrentCallPath() As String
 End Function
 
 Private Sub ValidateCallStack()
-    Dim isValid As Boolean: isValid = True
-    If mCallNestLevel < 0 Then isValid = False
-    If mCallSite.Count <> mCallNestLevel Then isValid = False
-    If mCallPath.Count <> mCallNestLevel Then isValid = False
-
-    If isValid Then
+    If mCallNestLevel < 0 Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
             LOGGER_NAMESPACE & "." & CLASS_NAME & ".ValidateCallStack", _
-            "Unexpected error. The call stack contains an unexpected value."
+            "Unexpected error. CallNestLevel is under 0."
+    End If
+    
+    If mCallSite.Count <> mCallNestLevel Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".ValidateCallStack", _
+            "Unexpected error. CallSite.Count is not equal CallNestLevel."
+    End If
+    
+    If mCallPath.Count <> mCallNestLevel Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".ValidateCallStack", _
+            "Unexpected error. mCallPath.Count is not equal CallNestLevel."
     End If
 End Sub
 
@@ -95,6 +110,11 @@ Private Sub Logger_ICallStack_ExitProcedure()
     ExitProcedure
 End Sub
 
+Private Function Logger_ICallStack_GetCurrentCallSite() As String
+    Logger_ICallStack_GetCurrentCallSite = GetCurrentCallSite
+End Function
+
 Private Function Logger_ICallStack_GetCurrentCallPath() As String
     Logger_ICallStack_GetCurrentCallPath = GetCurrentCallPath
 End Function
+

@@ -24,7 +24,6 @@ Attribute VB_Exposed = False
 Option Explicit
 Private Const CLASS_NAME As String = "Logger_ProcedureTracer"
 
-Private mCallSite As String
 Private mStackTraceEventHandler As Logger_IStackTraceEventHandler
 Private mIsInitialized As Boolean
 
@@ -37,10 +36,9 @@ Public Sub Initialize(ByVal currentModuleName As String, ByVal currentProcedureN
             "Unexpected error. StackTraceEventHandler instance not found"
     End If
     Set mStackTraceEventHandler = stackTraceEventHandler
-    mCallSite = currentModuleName & "." & currentProcedureName
     
     ' Notify procedure entry to StackTraceEventHandler
-    mStackTraceEventHandler.OnProcedureEnter mCallSite
+    mStackTraceEventHandler.OnProcedureEnter currentModuleName & "." & currentProcedureName
     
     mIsInitialized = True
 End Sub
