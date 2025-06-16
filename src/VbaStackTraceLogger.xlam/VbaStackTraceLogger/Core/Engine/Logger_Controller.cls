@@ -52,9 +52,12 @@ End Sub
 ' Write information to logInfo, then pass to Writer for log output
 Private Sub WriteLog(ByVal writeMessage As String, ByVal userSelectedTag As LoggerLogTag)
     EnsureInitialized
-
     ' === Based on logger settings, determine if log should be output ===
-    If mOutputFilter.ShouldWriteLog(userSelectedTag, mLoggerConfig) = False Then Exit Sub
+    If mOutputFilter.ShouldWriteLog(userSelectedTag, _
+                                    mLoggerConfig.IsLoggingEnabled, _
+                                    mLoggerConfig.IsTagFilteringEnabled, _
+                                    mLoggerConfig.ExcludedTags) _
+                                        = False Then Exit Sub
     
     ' === Get call path information ===
     Dim CallPath As String

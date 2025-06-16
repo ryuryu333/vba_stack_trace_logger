@@ -17,23 +17,24 @@ Private Const CLASS_NAME As String = "Logger_OutputFilter"
 
 ' === Log Output Filtering ===
 ' Determine whether log should be written based on configuration
-Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByRef config As Logger_ConfigurationDTO) As Boolean
+Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, _
+                              ByVal configIsLoggingEnabled As Boolean, _
+                              ByVal configIsTagFilteringEnabled As Boolean, _
+                              ByRef configExcludedTags() As LoggerLogTag) As Boolean
     ShouldWriteLog = True
     
     ' If logging is disabled
-    If config.IsLoggingEnabled = False Then
+    If configIsLoggingEnabled = False Then
         ShouldWriteLog = False
         Exit Function
     End If
     
     ' If specific tag logging is disabled
-    If config.IsTagFilteringEnabled Then
-        Dim userDefinedExcludedTags() As LoggerLogTag
-        userDefinedExcludedTags = config.ExcludedTags
+    If configIsTagFilteringEnabled Then
         ' Check if it matches user-configured excluded logs
         Dim i As Integer
-        For i = LBound(userDefinedExcludedTags) To UBound(userDefinedExcludedTags)
-            If selectedTag = userDefinedExcludedTags(i) Then
+        For i = LBound(configExcludedTags) To UBound(configExcludedTags)
+            If selectedTag = configExcludedTags(i) Then
                 ShouldWriteLog = False
                 Exit Function
             End If
@@ -44,8 +45,11 @@ End Function
 ' === Interface Implementation ===
 
 ' Logger_IOutputFilter implementation
-Private Function Logger_IOutputFilter_ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByVal config As Logger_ConfigurationDTO) As Boolean
+Private Function Logger_IOutputFilter_ShouldWriteLog(ByVal selectedTag As LoggerLogTag, _
+                                                     ByVal configIsLoggingEnabled As Boolean, _
+                                                     ByVal configIsTagFilteringEnabled As Boolean, _
+                                                     ByRef configExcludedTags() As LoggerLogTag) As Boolean
     ' Delegate to main method
-    Logger_IOutputFilter_ShouldWriteLog = ShouldWriteLog(selectedTag, config)
+    Logger_IOutputFilter_ShouldWriteLog = ShouldWriteLog(selectedTag, configIsLoggingEnabled, configIsTagFilteringEnabled, configExcludedTags)
 End Function
 

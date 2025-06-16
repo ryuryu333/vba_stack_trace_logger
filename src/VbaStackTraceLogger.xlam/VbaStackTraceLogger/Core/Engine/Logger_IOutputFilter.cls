@@ -14,5 +14,8 @@ Attribute VB_Description = "Interface for output filtering"
 Option Explicit
 
 '@Description("Determine if log should be written based on tag and configuration")
-Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, ByVal config As Logger_ConfigurationDTO) As Boolean
+Public Function ShouldWriteLog(ByVal selectedTag As LoggerLogTag, _
+                              ByVal configIsLoggingEnabled As Boolean, _
+                              ByVal configIsTagFilteringEnabled As Boolean, _
+                              ByRef configExcludedTags() As LoggerLogTag) As Boolean
 End Function
