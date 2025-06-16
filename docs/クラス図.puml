@@ -78,7 +78,7 @@ class Logger_OutputFilter implements Logger_IOutputFilter {
     Separated in anticipation of expanded functionality.
 }
 interface Logger_IOutputFilter {
-    + ShouldWriteLog(LoggerLogTag, configIsLoggingEnabled, configIsTagFilteringEnabled, configExcludedTags) : Boolean
+    + ShouldWriteLog(LoggerLogTag, IsLoggingEnabled, IsTagFilteringEnabled, ExcludedTags) : Boolean
 }
 
 ' Create writers
@@ -87,7 +87,7 @@ class Logger_WriterFactory implements Logger_IWriterFactory {
     Separated in anticipation of expanded functionality.
 }
 interface Logger_IWriterFactory {
-    + CreateWriters(configIsWriteToImmediate, configIsWriteToExcelSheet, configOutputExcelSheet) : Collection
+    + CreateWriters(IsWriteToImmediate, IsWriteToExcelSheet, OutputExcelSheet) : Collection
 }
 
 package "Log Writers" {
@@ -130,15 +130,18 @@ interface Logger_ILogMetadataProvider {
 
 ' Write by WriteLogController and Logger_LogMetadataProvider, read by WriterManager
 class Logger_LogWriteRequestDTO {
-    - pMessage : String
-    - pTagType : LoggerLogTag
-    - pTagName : String
-    - pTimestamp : String
-    - pIsStackTraceEnabled : Boolean
-    - pCallPath : String
+    - mMessage : String
+    - mTagType : LoggerLogTag
+    - mTagName : String
+    - mTimestamp : String
+    - mIsStackTraceEnabled : Boolean
+    - mCallPath : String
     --
-    ~ Setter()
+    ~ Initialize(all private menber variables)
     ~ Getter()
+
+    ==
+    Initialize() is as an alternative to a parameterized constructor.
 }
 
 ' User start initialization through Logger_Facade.Initialize
@@ -207,12 +210,12 @@ package "Config Builders" {
 
 ' Write by builders, read by Controller
 class Logger_ConfigurationDTO {
-    - pIsLoggingEnabled : Boolean
-    - pIsTagFilteringEnabled : Boolean
-    - pExcludedTags : LoggerLogTag Array
-    - pIsWriteToImmediate : Boolean
-    - pIsWriteToExcelSheet : Boolean
-    - pOutputExcelSheet : Worksheet
+    - mIsLoggingEnabled : Boolean
+    - mIsTagFilteringEnabled : Boolean
+    - mExcludedTags : LoggerLogTag Array
+    - mIsWriteToImmediate : Boolean
+    - mIsWriteToExcelSheet : Boolean
+    - mOutputExcelSheet : Worksheet
     --
     ~ Setter()
     ~ Getter()
@@ -256,6 +259,7 @@ package "StackTrace" {
     interface Logger_ICallStack {
         + EnterProcedure(callSite As String)
         + ExitProcedure()
+        + GetCurrentCallSite() : String
         + GetCurrentCallPath() : String
     }
     ' Automatically tracks procedure entry and exit
