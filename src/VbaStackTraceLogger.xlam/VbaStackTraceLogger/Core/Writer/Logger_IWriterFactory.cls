@@ -14,5 +14,7 @@ Attribute VB_Description = "Interface for Writer Factory"
 Option Explicit
 
 '@Description("Create collection of writers based on configuration")
-Public Function CreateWriters(ByVal config As Logger_ConfigurationDTO) As Collection
+Public Function CreateWriters(ByVal configIsWriteToImmediate As Boolean, _
+                             ByVal configIsWriteToExcelSheet As Boolean, _
+                             ByVal configOutputExcelSheet As Worksheet) As Collection
 End Function

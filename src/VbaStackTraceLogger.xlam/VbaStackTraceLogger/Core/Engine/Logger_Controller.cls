@@ -32,13 +32,14 @@ Private Sub Initialize()
     ' === Create and Initialize StackTraceController ===
     Set mStackTraceController = New Logger_StackTraceController
     mStackTraceController.Initialize mLoggerConfig.IsStackTraceEnabled, Me
-    
-    ' === Create and initialize Writers ===
+      ' === Create and initialize Writers ===
     Dim writerFactory As Logger_WriterFactory
     Set writerFactory = New Logger_WriterFactory
     
     Dim writers As Collection
-    Set writers = writerFactory.CreateWriters(mLoggerConfig)
+    Set writers = writerFactory.CreateWriters(mLoggerConfig.IsWriteToImmediate, _
+                                              mLoggerConfig.IsWriteToExcelSheet, _
+                                              mLoggerConfig.OutputExcelSheet)
     
     Set mWriteLogController = New Logger_WriteLogController
     mWriteLogController.Initialize writers

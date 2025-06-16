@@ -15,22 +15,24 @@ Implements Logger_IWriterFactory
 
 Private Const CLASS_NAME As String = "Logger_WriterFactory"
 
-Public Function CreateWriters(ByVal config As Logger_ConfigurationDTO) As Collection
+Public Function CreateWriters(ByVal configIsWriteToImmediate As Boolean, _
+                             ByVal configIsWriteToExcelSheet As Boolean, _
+                             ByVal configOutputExcelSheet As Worksheet) As Collection
     Dim writers As Collection
     Set writers = New Collection
     
     ' Immediate Window (VBE)
-    If config.IsWriteToImmediate Then
+    If configIsWriteToImmediate Then
         Dim immediateWriter As Logger_Writer_Immediate
         Set immediateWriter = New Logger_Writer_Immediate
         writers.Add immediateWriter
     End If
     
     ' Excel Sheet (with target sheet configuration)
-    If config.IsWriteToExcelSheet Then
+    If configIsWriteToExcelSheet Then
         Dim excelWriter As Logger_Writer_Excel
         Set excelWriter = New Logger_Writer_Excel
-        excelWriter.SetTargetSheet config.OutputExcelSheet
+        excelWriter.SetTargetSheet configOutputExcelSheet
         writers.Add excelWriter
     End If
     
@@ -40,7 +42,9 @@ End Function
 ' === Interface Implementation ===
 
 ' Logger_IWriterFactory implementation
-Private Function Logger_IWriterFactory_CreateWriters(ByVal config As Logger_ConfigurationDTO) As Collection
-    Set Logger_IWriterFactory_CreateWriters = CreateWriters(config)
+Private Function Logger_IWriterFactory_CreateWriters(ByVal configIsWriteToImmediate As Boolean, _
+                                                     ByVal configIsWriteToExcelSheet As Boolean, _
+                                                     ByVal configOutputExcelSheet As Worksheet) As Collection
+    Set Logger_IWriterFactory_CreateWriters = CreateWriters(configIsWriteToImmediate, configIsWriteToExcelSheet, configOutputExcelSheet)
 End Function
 
