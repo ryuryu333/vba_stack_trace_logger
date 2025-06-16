@@ -10,41 +10,43 @@ Attribute VB_Exposed = False
 ' Logger_Facade.cls
 '@Folder("VbaStackTraceLogger.Core.API")
 
-' User interface aggregation class
-' Users access Logger_Facade via Logger_Provider
-' (Actual flow: Logger_Provider -> Logger_SingletonManager -> Logger_Facade)
-' Usage: myLogger.Log
-
 Option Explicit
+
 Private Const CLASS_NAME As String = "Logger_Facade"
 
-Private mController As Logger_Controller
 Private mIsInitialized As Boolean
+Private mController As Logger_IController
 
 ' === Logger initialization ===
-' Processing order: User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
-Public Function Initialize() As Logger_ConfigBuilder
+' Start configuration, user set options via methode cahin
+' Finally call back Controller's initialize method
+Public Function StartConfiguration() As Logger_ConfigBuilder
     ' If already initialized, automatically reset and reinitialize
     If mIsInitialized Then
         Terminate
         mIsInitialized = False
     End If
-
-    ' Create configuration values using builder
-    ' Then returns to CompleteInitialization
-    Dim configBuilder As New Logger_ConfigBuilder
-    configBuilder.Initialize Me
-    Set Initialize = configBuilder
-End Function
-
-' Processing order: User > Facade.Initialize > ConfigBuilder.Build > Facade.CompleteInitialization
-Friend Sub CompleteInitialization(ByRef userConfig As Logger_ConfigStruct)
-    ' Initialize Controller using user-created configuration values
-    Set mController = New Logger_Controller
-    mController.Initialize userConfig
     
+    ' Create concrete class instance
+    Dim concreteController As New Logger_Controller ' Used by Facade & Builder
+    Dim concreteConfigBuilder As New Logger_ConfigBuilder
+    
+    ' Set member variable
+    Set mController = concreteController
+
+    ' Preparation builder
+    Dim configBuilder As Logger_IConfigBuilder
+    Set configBuilder = concreteConfigBuilder
+
+    ' Set call back receiver
+    Dim receiver As Logger_IConfigReceiver
+    Set receiver = concreteController
+    configBuilder.Initialize receiver
+
+    ' Finish
     mIsInitialized = True
-End Sub
+    Set StartConfiguration = configBuilder
+End Function
 
 ' === Log output instruction ===
 Public Sub Log(ByVal writeMessage As String, Optional ByVal userSelectedTag As LoggerLogTag = LoggerLogTag.LogTag_Info)
@@ -56,7 +58,7 @@ End Sub
 ' === Logger termination instruction ===
 Public Sub Terminate()
     EnsureInitialized
-    
+
     mController.Terminate
     Set mController = Nothing
     
@@ -64,9 +66,6 @@ Public Sub Terminate()
 End Sub
 
 ' === Stack trace related ===
-' ProcedureTracerProvider > Create ProcedureTracer > User get ProcedureTracer instance
-' User holds ProcedureTracer as variable at procedure start, variable is destroyed when procedure ends
-' Utilizes instance lifecycle to detect procedure start/end and execute processing
 Public Function UsingTracer(ByVal currentModuleName As String, _
                             ByVal currentProcName As String) As Logger_ProcedureTracer
     EnsureInitialized
@@ -74,25 +73,18 @@ Public Function UsingTracer(ByVal currentModuleName As String, _
     Set UsingTracer = mController.UsingTracer(currentModuleName, currentProcName)
 End Function
 
-' === Utility functions ===
-' Destroy Logger_Facade instance in Logger_SingletonManager
-Public Sub Reset()
-    ReleaseMyLogger
-End Sub
-
-' === Private functions used throughout the module ===
-' Check if initialized
-Private Sub EnsureInitialized()
-    If Not mIsInitialized Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
-            "Logger is not initialized"
-    End If
-End Sub
-
 Private Sub Class_Terminate()
     ' Fail-safe
     Set mController = Nothing
 End Sub
 
+' === Private Method ===
+' Ensure initialized before operations
+Private Sub EnsureInitialized()
+    If Not mIsInitialized Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureInitialized", _
+            "Logger is not initialized. Call StartConfiguration().Build() first."
+    End If
+End Sub
 

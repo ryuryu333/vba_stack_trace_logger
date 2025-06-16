@@ -11,25 +11,35 @@ Attribute VB_Exposed = False
 '@Folder("VbaStackTraceLogger.Core.Config")
 
 Option Explicit
-Private Const CLASS_NAME As String = "ExcelOutputBuilder"
+Private Const CLASS_NAME As String = "Logger_ExcelOutputBuilder"
 
-Private parentBuilder As Logger_ConfigBuilder
+Private mParentBuilder As Logger_ConfigBuilder
 Private mIsApplied As Boolean
 
 Friend Sub SetParentBuilder(ByVal parent As Logger_ConfigBuilder)
-    Set parentBuilder = parent
+    Set mParentBuilder = parent
 End Sub
 
-Public Function SetOutputExcelSheet(sheet As Worksheet) As Logger_ConfigBuilder
-    parentBuilder.SetOutputExcelSheet sheet
+Public Function SetOutputExcelSheet(ByVal sheet As Worksheet) As Logger_ConfigBuilder
+    If mParentBuilder Is Nothing Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".SetOutputExcelSheet", _
+            "Unexpected error. mParentBuilder is Nothing."
+    End If
+
+    mParentBuilder.SetOutputExcelSheet sheet
     mIsApplied = True
-    Set SetOutputExcelSheet = parentBuilder
+    Set SetOutputExcelSheet = mParentBuilder
 End Function
 
-Private Sub Class_Terminate()
+Private Sub EnsureApply()
     If Not mIsApplied Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-                  LOGGER_NAMESPACE & "." & CLASS_NAME & ".Class_Terminate", _
-                  "SetOutputExcelSheet() が呼ばれていません、Excel出力の設定が適用されていないため正常に動作しません"
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureApply", _
+             "Logger initialization is not complete. Call SetOutputExcelSheet()."
     End If
+End Sub
+
+Private Sub Class_Terminate()
+    EnsureApply
 End Sub

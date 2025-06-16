@@ -14,6 +14,8 @@ Public Function GetMyLogger() As Logger_Facade
     Set GetMyLogger = mLogger
 End Function
 
+' To Debug
+' releases the singleton logger instance
 Public Sub ReleaseMyLogger()
     Set mLogger = Nothing
 End Sub

@@ -8,9 +8,11 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Logger_LogMetadataProvider.cls
-'@Folder("VbaStackTraceLogger.Core")
+'@Folder("VbaStackTraceLogger.Core.Writer")
 
 Option Explicit
+
+Implements Logger_ILogMetadataProvider
 
 #If VBA7 Then
     Private Declare PtrSafe Sub GetLocalTime Lib "kernel32" (lpSystemTime As SYSTEMTIME)
@@ -56,3 +58,15 @@ Public Function GetTagName(ByVal tagEnum As LoggerLogTag) As String
         Case Else:            GetTagName = "INFO"
     End Select
 End Function
+
+' === Interface Implementation ===
+
+' Logger_ILogMetadataProvider implementation
+Private Function Logger_ILogMetadataProvider_GetTimeStamp() As String
+    Logger_ILogMetadataProvider_GetTimeStamp = GetTimeStamp
+End Function
+
+Private Function Logger_ILogMetadataProvider_GetTagName(ByVal logTag As LoggerLogTag) As String
+    Logger_ILogMetadataProvider_GetTagName = GetTagName(logTag)
+End Function
+

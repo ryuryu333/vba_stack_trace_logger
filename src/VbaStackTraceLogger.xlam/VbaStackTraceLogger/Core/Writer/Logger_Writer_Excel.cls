@@ -13,96 +13,89 @@ Attribute VB_Exposed = False
 Option Explicit
 Implements Logger_ILogWriter
 
+Private Const CLASS_NAME As String = "Logger_ExcelWriter"
+
+' If logger functions are changed, update thins Eunum
+Private Enum ColumnType
+    ColTimestamp = 1
+    ColTag = 2
+    ColCallPath = 3
+    ColMessage = 4
+End Enum
+
 Private mOutputSheet As Worksheet
 Private mCurrentRow As Long
 
-' 出力先シートを設定
+
 Public Sub SetTargetSheet(sheet As Worksheet)
     Set mOutputSheet = sheet
 End Sub
 
-Public Sub Logger_ILogWriter_Initialize()
+Private Sub Logger_ILogWriter_Initialize()
+    Debug.Print "Initializing Excel writer..."
+
     If mOutputSheet Is Nothing Then
-        MsgBox "Logger_ExcelWriter: 出力先のシートが設定されていません。", vbExclamation
-        Exit Sub
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Logger_ILogWriter_Initialize", _
+            "Unexpected error. mOutputSheet is Nothing."
     End If
 
-    ' 過去のログ内容と背景色をクリア (A列からD列)
+    ' Clean up previous cell contents and background colors
     With mOutputSheet.Columns("A:D")
-        .ClearContents ' 内容を消去
-        .Interior.ColorIndex = xlNone ' 背景色をクリア
+        .ClearContents
+        .Interior.ColorIndex = xlNone
     End With
 
+    ' Set up the header row
     With mOutputSheet
-        .Cells(1, 1).value = "Timestamp"
-        .Cells(1, 2).value = "Tag"
-        .Cells(1, 3).value = "呼び出し元情報" ' Changed from Module
-        .Cells(1, 4).value = "Message"       ' Changed from Procedure (and effectively was Message)
+        .Cells(1, ColumnType.ColTimestamp).value = "Timestamp"
+        .Cells(1, ColumnType.ColTag).value = "Tag"
+        .Cells(1, ColumnType.ColCallPath).value = "CallPath"
+        .Cells(1, ColumnType.ColMessage).value = "Message"
     End With
     
-    With mOutputSheet.Range("A1:D1") ' Adjusted range to D1
+    ' Set header styles
+    With mOutputSheet.Range("A1:D1")
         .HorizontalAlignment = xlCenter
         .VerticalAlignment = xlCenter
         .Font.Bold = True
     End With
 
-    mCurrentRow = 2  ' ログ出力開始行
+    ' Start writing from the second row
+    mCurrentRow = 2
 
-    Debug.Print "エクセル用のロガーを初期化しました"
+    Debug.Print "Finished initializing Excel writer."
 End Sub
 
-Public Sub Logger_ILogWriter_WriteLog(logInfo As Logger_LogInfoStruct)
-    If mOutputSheet Is Nothing Then Exit Sub
-
+Private Sub Logger_ILogWriter_WriteLog(ByVal logRequest As Logger_LogWriteRequestDTO)
     With mOutputSheet
-        .Cells(mCurrentRow, 1).value = logInfo.Timestamp
-        .Cells(mCurrentRow, 1).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
-        .Cells(mCurrentRow, 2).value = logInfo.TagName
-
-        If logInfo.IsStackTraceEnabled Then
-            If Len(logInfo.CallPath) > 0 Then
-                .Cells(mCurrentRow, 3).value = logInfo.CallPath
-            Else
-                .Cells(mCurrentRow, 3).value = ""
-            End If
-        Else
-            .Cells(mCurrentRow, 3).value = ""
-        End If
-
-        .Cells(mCurrentRow, 4).value = logInfo.Message ' Message now in column D
+        ' Write log data to the current row
+        .Cells(mCurrentRow, ColumnType.ColTimestamp).value = logRequest.Timestamp
+        .Cells(mCurrentRow, ColumnType.ColTimestamp).NumberFormat = "yyyy-mm-dd hh:mm:ss.000"
+        .Cells(mCurrentRow, ColumnType.ColTag).value = logRequest.TagName
+        .Cells(mCurrentRow, ColumnType.ColCallPath).value = logRequest.CallPath
+        .Cells(mCurrentRow, ColumnType.ColMessage).value = logRequest.Message
         
-        .Range(.Cells(mCurrentRow, 1), .Cells(mCurrentRow, 4)).VerticalAlignment = xlCenter ' Adjusted range to column D
-        
-        ' 最初の出力（2行目）のときだけ列幅を AutoFit
-        If mCurrentRow = 2 Then
-            .Columns("A:D").AutoFit ' Adjusted range to column D
-        End If
-        
-        ' 背景色の適用
+        ' Set background color based on tag type
         Dim bgColor As Long
-        Select Case logInfo.TagType
+        Select Case logRequest.TagType
             Case LogTag_Warning
-                bgColor = RGB(255, 255, 153)  ' 薄い黄色
+                bgColor = RGB(255, 255, 153)  ' Yellow
             Case LogTag_Error, LogTag_Critical
-                bgColor = RGB(255, 199, 206)  ' 薄い赤色
+                bgColor = RGB(255, 199, 206)  ' Red
             Case Else
-                bgColor = xlNone  ' デフォルト（塗らない）
+                bgColor = xlNone  ' No background color
         End Select
-    
         If bgColor <> xlNone Then
-            .Range(.Cells(mCurrentRow, 1), .Cells(mCurrentRow, 4)).Interior.Color = bgColor ' Adjusted range to column D
+            .Range(.Cells(mCurrentRow, ColumnType.ColTimestamp), .Cells(mCurrentRow, ColumnType.ColMessage)).Interior.Color = bgColor
         End If
-            
     End With
     
+    ' Move to the next row for the next log entry
     mCurrentRow = mCurrentRow + 1
 End Sub
 
-Public Sub Logger_ILogWriter_Terminate()
-    If Not mOutputSheet Is Nothing Then
-        On Error Resume Next ' Handle cases where sheet might not be available
-        mOutputSheet.Columns("A:D").AutoFit ' Adjusted range to column D
-        On Error GoTo 0
-    End If
+Private Sub Logger_ILogWriter_Terminate()
+    mOutputSheet.Columns("A:D").AutoFit
 End Sub
 

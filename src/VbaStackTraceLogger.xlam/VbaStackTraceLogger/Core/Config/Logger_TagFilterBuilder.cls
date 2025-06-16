@@ -11,9 +11,9 @@ Attribute VB_Exposed = False
 '@Folder("VbaStackTraceLogger.Core.Config")
 
 Option Explicit
-Private Const CLASS_NAME As String = "TagFilterBuilder"
+Private Const CLASS_NAME As String = "Logger_TagFilterBuilder"
 
-Private parentBuilder As Logger_ConfigBuilder
+Private mParentBuilder As Logger_ConfigBuilder
 Private mTags() As LoggerLogTag
 Private mCount As Long
 Private mIsAdded As Boolean
@@ -25,10 +25,10 @@ Private Sub Class_Initialize()
 End Sub
 
 Friend Sub SetParentBuilder(ByVal parent As Logger_ConfigBuilder)
-    Set parentBuilder = parent
+    Set mParentBuilder = parent
 End Sub
 
-Public Function Add(tag As LoggerLogTag) As Logger_TagFilterBuilder
+Public Function Add(ByVal tag As LoggerLogTag) As Logger_TagFilterBuilder
     mCount = mCount + 1
     ReDim Preserve mTags(1 To mCount)
     mTags(mCount) = tag
@@ -38,21 +38,29 @@ Public Function Add(tag As LoggerLogTag) As Logger_TagFilterBuilder
 End Function
 
 Public Function Apply() As Logger_ConfigBuilder
-    If mIsAdded = False Then
-        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Apply", _
-            "除外対象のタグが指定されていません、Add で指定した後に Apply してください"
-    End If
+    EnsureAdd
     
-    parentBuilder.SetExcludedTags mTags
+    mParentBuilder.SetExcludedTags mTags
     mIsApplied = True
-    Set Apply = parentBuilder
+    Set Apply = mParentBuilder
 End Function
 
-Private Sub Class_Terminate()
+Private Sub EnsureAdd()
+    If Not mIsAdded Then
+        Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureAdd", _
+            "Logger initialization is not complete. Call Add()"
+    End If
+End Sub
+
+Private Sub EnsureApply()
     If Not mIsApplied Then
         Err.Raise ERR_VBA_STACK_TRACE_LOGGER, _
-            LOGGER_NAMESPACE & "." & CLASS_NAME & ".Class_Terminate", _
-            "Apply() が呼ばれていません、タグフィルタの設定が適用されていないため正常に動作しません"
+            LOGGER_NAMESPACE & "." & CLASS_NAME & ".EnsureApply", _
+            "Logger initialization is not complete. Call Apply()"
     End If
+End Sub
+
+Private Sub Class_Terminate()
+    EnsureApply
 End Sub
