@@ -1,6 +1,6 @@
 # VBA Stack Trace Logger
 
-VBAでスタックトレース付きのログ出力を簡単に実現できるアドインです。
+VBAでスタックトレース付きのログ出力を簡単に実現できるアドインです。  
 
 ```:Sample
 [2025-06-21 00:02:44.459][Trace][MyModule.SubProc < MyModule.MainProc] >> Enter MyModule.SubProc
@@ -9,8 +9,8 @@ VBAでスタックトレース付きのログ出力を簡単に実現できる�
 ```
 
 ## WIP 本ロガーは開発途中です WIP
-main ブランチは正常に動く状態にしています。
-ただし、現在はプレリリース状態であり、以下の作業が進行中です。
+main ブランチは正常に動く状態にしています。  
+ただし、現在はプレリリース状態であり、以下の作業が進行中です。  
 
 - ドキュメント整備（英語/日本語対応、APIリファレンス、クラス図などのUML）
 - 単体テスト構築
@@ -29,7 +29,7 @@ main ブランチは正常に動く状態にしています。
 - Debug.Print と同じ使用感で利用可能
 
 ## インストール方法
-1. [binフォルダ](vba_stack_trace_logger/bin)から`VbaStackTraceLogger.xlam`をダウンロード
+1. [binフォルダ](../bin)から`VbaStackTraceLogger.xlam`をダウンロード
 2. 任意のフォルダ（例: `C:\Users\YourName\Documents\vba_addins\`）に保存
 3. Excelで「開発」タブ→「Visual Basic」→「ツール」→「参照設定」→「参照(B)」から`VbaStackTraceLogger.xlam`を追加
 
@@ -71,10 +71,10 @@ End Sub
 
 
 ## ライセンス
-このプロジェクトはMITライセンスの下で公開されています。
+このプロジェクトはMITライセンスの下で公開されています。  
 
 ### 第三者ライブラリ
-このプロジェクトは以下の第三者ライブラリを使用しています：
+このプロジェクトは以下の第三者ライブラリを使用しています。  
 
 #### vbac.wsf (Ariawase Library)
 - **ライセンス**: MIT License
