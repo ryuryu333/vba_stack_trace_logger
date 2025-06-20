@@ -1,4 +1,4 @@
-@startuml Class Diagram
+@startuml class_diagram
 title VBA Stack Trace Logger Class Diagram
 
 ' ====== Discription ======
